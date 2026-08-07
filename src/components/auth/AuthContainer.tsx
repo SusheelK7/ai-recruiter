@@ -5,11 +5,12 @@ import Image from "next/image";
 import { AuthIllustration } from "./AuthIllustration";
 import { LoginForm } from "./LoginForm";
 import { RegistrationForm } from "./RegistrationForm";
+import { ForgotPasswordForm } from "./ForgotPasswordForm";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { AuthFormSkeleton } from "./AuthFormSkeleton";
 
 export function AuthContainer() {
-  const [activeTab, setActiveTab] = useState<"login" | "register">("login");
+  const [activeTab, setActiveTab] = useState<"login" | "register" | "forgot-password">("login");
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
@@ -122,13 +123,18 @@ export function AuthContainer() {
 
             {/* Form component with soft cross-fade slide transition or skeleton */}
             {isInitialLoading ? (
-              <AuthFormSkeleton type={activeTab} />
+              <AuthFormSkeleton type={activeTab === "forgot-password" ? "login" : activeTab} />
             ) : (
               <div key={activeTab} className="animate-fade-slide w-full">
                 {activeTab === "login" ? (
-                  <LoginForm onSwitchToRegister={() => setActiveTab("register")} />
-                ) : (
+                  <LoginForm
+                    onSwitchToRegister={() => setActiveTab("register")}
+                    onSwitchToForgotPassword={() => setActiveTab("forgot-password")}
+                  />
+                ) : activeTab === "register" ? (
                   <RegistrationForm onSwitchToLogin={() => setActiveTab("login")} />
+                ) : (
+                  <ForgotPasswordForm onSwitchToLogin={() => setActiveTab("login")} />
                 )}
               </div>
             )}

@@ -8,18 +8,24 @@ import { AuthFormSkeleton } from "./AuthFormSkeleton";
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
+  onSwitchToForgotPassword?: () => void;
 }
 
-export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
+export function LoginForm({ onSwitchToRegister, onSwitchToForgotPassword }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isUnverified, setIsUnverified] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendStatusMessage, setResendStatusMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
+    setIsUnverified(false);
+    setResendStatusMessage("");
 
     if (!email || !password) {
       setErrorMessage("Please enter both email and password.");
@@ -28,16 +34,64 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
 
     setIsLoading(true);
 
-    // Simulate authentication call
-    setTimeout(() => {
-      setIsLoading(false);
-      // Demo validation check
-      if (email.includes("@") && password.length >= 6) {
-        alert("Login successful! Redirecting to AI Recruiter dashboard...");
-      } else {
-        setErrorMessage("Invalid email or password.");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMessage(data.error || "Login failed. Please try again.");
+        if (res.status === 403 || data.emailVerified === false) {
+          setIsUnverified(true);
+        }
+        setIsLoading(false);
+        return;
       }
-    }, 1200);
+
+      // Login successful
+      setIsLoading(false);
+      alert(`Login successful! Welcome back, ${data.company.name}. Redirecting to dashboard...`);
+    } catch {
+      setErrorMessage("Network error. Please check your connection and try again.");
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) {
+      setErrorMessage("Please enter your email address to resend verification.");
+      return;
+    }
+
+    setResendLoading(true);
+    setResendStatusMessage("");
+
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMessage(data.error || "Failed to resend verification email.");
+      } else {
+        setResendStatusMessage(data.message || "Verification link sent! Check your inbox.");
+      }
+    } catch {
+      setErrorMessage("Network error. Please try again.");
+    } finally {
+      setResendLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -56,15 +110,47 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         </p>
       </div>
 
-      {/* Global Form Error Alert if any */}
-      {errorMessage && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" strokeWidth="2" />
-            <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" />
-            <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2" />
-          </svg>
-          <span>{errorMessage}</span>
+      {/* Distinct Unverified Email Warning Alert */}
+      {isUnverified ? (
+        <div className="mb-4 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-200 text-xs flex flex-col gap-2.5">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span className="font-semibold">{errorMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            disabled={resendLoading}
+            className="self-start text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white transition-colors disabled:opacity-50"
+          >
+            {resendLoading ? "Sending link..." : "Resend verification email"}
+          </button>
+        </div>
+      ) : (
+        /* Standard Global Form Error Alert */
+        errorMessage && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" strokeWidth="2" />
+              <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" />
+              <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2" />
+            </svg>
+            <span>{errorMessage}</span>
+          </div>
+        )
+      )}
+
+      {/* Resend Status Notification */}
+      {resendStatusMessage && (
+        <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-medium">{resendStatusMessage}</span>
+          </div>
         </div>
       )}
 
@@ -135,7 +221,9 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
               variant="accent"
               onClick={(e) => {
                 e.preventDefault();
-                alert("Password reset instructions sent if email exists.");
+                if (onSwitchToForgotPassword) {
+                  onSwitchToForgotPassword();
+                }
               }}
               className="text-xs"
             >

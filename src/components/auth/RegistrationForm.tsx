@@ -25,11 +25,12 @@ export function RegistrationForm({ onSwitchToLogin }: RegistrationFormProps) {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isPasswordStarted, setIsPasswordStarted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const passwordRules = validatePasswordRules(password);
   const allPasswordRulesPassed = isPasswordValid(passwordRules);
 
-  const passwordsMatch = confirmPassword.length > 0 ? confirmPassword === password : true;
   const isConfirmError = confirmPassword.length > 0 && confirmPassword !== password;
 
   const isFormValid =
@@ -40,23 +41,50 @@ export function RegistrationForm({ onSwitchToLogin }: RegistrationFormProps) {
     confirmPassword === password &&
     termsAccepted;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage("");
+    setSuccessMessage("");
 
     if (!isFormValid) return;
 
     setIsLoading(true);
 
-    // Simulate account registration call
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyName: companyName.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMessage(data.error || "Registration failed. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      setSuccessMessage(data.message || "Account created successfully! Check your email to verify your account before logging in.");
       setIsLoading(false);
-      alert(`Account created successfully for ${companyName}! Redirecting to onboarding...`);
-    }, 1200);
+
+      setTimeout(() => {
+        onSwitchToLogin();
+      }, 3000);
+    } catch {
+      setErrorMessage("Network error. Please check your connection and try again.");
+      setIsLoading(false);
+    }
   };
 
   if (isLoading) {
     return <AuthFormSkeleton type="register" />;
   }
+
 
   return (
     <div className="w-full max-w-sm mx-auto flex flex-col justify-center animate-fade-slide">
@@ -69,6 +97,31 @@ export function RegistrationForm({ onSwitchToLogin }: RegistrationFormProps) {
           Start hiring top talent faster with AI power
         </p>
       </div>
+
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" strokeWidth="2" />
+            <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" />
+            <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2" />
+          </svg>
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-medium">{successMessage}</span>
+          </div>
+
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">

@@ -1,13 +1,108 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id                     String    @id @default(cuid())
+  name                   String
+  email                  String    @unique
+  passwordHash           String
+  plan                   String    @default("free")
+  emailVerified          Boolean   @default(false)
+  passwordResetAt        DateTime?
+  lastVerificationSentAt DateTime?
+  lastPasswordResetSentAt DateTime?
+  createdAt              DateTime  @default(now())
+  users                  User[]
+  jobs                   Job[]
+  subscription           Subscription?
+}
+
+model User {
+  id                     String    @id @default(cuid())
+  companyId              String
+  company                Company   @relation(fields: [companyId], references: [id])
+  email                  String    @unique
+  passwordHash           String
+  role                   String    @default("recruiter") // Admin | Recruiter | Viewer
+  emailVerified          Boolean   @default(false)
+  passwordResetAt        DateTime?
+  lastVerificationSentAt DateTime?
+  lastPasswordResetSentAt DateTime?
+  createdAt              DateTime  @default(now())
+}
+
+model Job {
+  id             String    @id @default(cuid())
+  companyId      String
+  company        Company   @relation(fields: [companyId], references: [id])
+  title          String
+  description    String
+  requiredSkills Json
+  expiryDate     DateTime?
+  status         String    @default("active")
+  applications   Application[]
+  test           Test?
+}
+
+model Application {
+  id              String   @id @default(cuid())
+  jobId           String
+  job             Job      @relation(fields: [jobId], references: [id])
+  candidateName   String
+  candidateEmail  String
+  resumeUrl       String
+  matchScore      Int?
+  matchedSkills   Json?
+  missingSkills   Json?
+  aiReasoning     String?
+  introTranscript String?
+  status          String   @default("applied")
+  testResult      TestResult?
+  interview       Interview?
+  createdAt       DateTime @default(now())
+}
+
+model Test {
+  id              String   @id @default(cuid())
+  jobId           String   @unique
+  job             Job      @relation(fields: [jobId], references: [id])
+  questions       Json
+  durationMinutes Int
+  passingScore    Int?
+  results         TestResult[]
+}
+
+model TestResult {
+  id            String      @id @default(cuid())
+  applicationId String      @unique
+  application   Application @relation(fields: [applicationId], references: [id])
+  testId        String
+  test          Test        @relation(fields: [testId], references: [id])
+  score         Int
+  violationLog  Json?
+  submittedAt   DateTime    @default(now())
+}
+
+model Interview {
+  id            String      @id @default(cuid())
+  applicationId String      @unique
+  application   Application @relation(fields: [applicationId], references: [id])
+  scheduledTime DateTime?
+  questions     Json?
+  status        String      @default("pending")
+}
+
+model Subscription {
+  id               String    @id @default(cuid())
+  companyId        String    @unique
+  company          Company   @relation(fields: [companyId], references: [id])
+  plan             String    @default("free")
+  stripeCustomerId String?
+  renewsAt         DateTime?
 }
