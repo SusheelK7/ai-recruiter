@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { generateAuthToken } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest) {
     // Find the company by email
     const company = await prisma.company.findUnique({
       where: { email: normalizedEmail },
+      include: { users: true },
     });
 
     // If no company found with this email
@@ -53,8 +55,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Login successful — return company data (excluding sensitive fields)
-    return NextResponse.json(
+    const user = company.users[0] || { id: company.id, email: company.email };
+    const authToken = generateAuthToken({
+      id: user.id,
+      companyId: company.id,
+      email: company.email,
+    });
+
+    const response = NextResponse.json(
       {
         message: 'Login successful!',
         company: {
@@ -68,6 +76,16 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
+
+    response.cookies.set('authToken', authToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    return response;
   } catch (error: unknown) {
     console.error('Login error:', error);
     return NextResponse.json(

@@ -9,8 +9,14 @@ import { ForgotPasswordForm } from "./ForgotPasswordForm";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { AuthFormSkeleton } from "./AuthFormSkeleton";
 
-export function AuthContainer() {
-  const [activeTab, setActiveTab] = useState<"login" | "register" | "forgot-password">("login");
+type AuthTab = "login" | "register" | "forgot-password";
+
+interface AuthContainerProps {
+  initialTab?: AuthTab;
+}
+
+export function AuthContainer({ initialTab = "login" }: AuthContainerProps) {
+  const [activeTab, setActiveTab] = useState<AuthTab>(initialTab);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {

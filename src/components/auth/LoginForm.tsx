@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "../ui/Input";
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { Link } from "../ui/Link";
@@ -12,6 +13,7 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ onSwitchToRegister, onSwitchToForgotPassword }: LoginFormProps) {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -46,20 +48,18 @@ export function LoginForm({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
 
       const data = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || data?.message !== "Login successful!") {
         setErrorMessage(data.error || "Login failed. Please try again.");
         if (res.status === 403 || data.emailVerified === false) {
           setIsUnverified(true);
         }
-        setIsLoading(false);
         return;
       }
 
-      // Login successful
-      setIsLoading(false);
-      alert(`Login successful! Welcome back, ${data.company.name}. Redirecting to dashboard...`);
+      router.push("/dashboard");
     } catch {
       setErrorMessage("Network error. Please check your connection and try again.");
+    } finally {
       setIsLoading(false);
     }
   };

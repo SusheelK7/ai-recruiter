@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { generateVerificationToken } from '@/lib/jwt';
-import { sendVerificationEmail } from '@/lib/email';
+import { sendVerificationEmail, getVerificationUrl } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -65,18 +65,14 @@ export async function POST(request: NextRequest) {
     const token = generateVerificationToken({ id: user.id, email: user.email });
 
     // Send verification email
-    const emailSent = await sendVerificationEmail(user.email, token);
+    await sendVerificationEmail(user.email, token);
 
-    if (!emailSent) {
-      return NextResponse.json(
-        { error: "We couldn't send the verification email — please try again." },
-        { status: 502 }
-      );
-    }
+    const verificationUrl = getVerificationUrl(token);
 
     return NextResponse.json(
       {
         message: 'Account created successfully! Please check your email to verify your account before logging in.',
+        verificationUrl,
         company: {
           id: company.id,
           name: company.name,
