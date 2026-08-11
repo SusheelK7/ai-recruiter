@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { PublicNavbar } from "../layout/PublicNavbar";
+import { ScrollReveal } from "../ui/ScrollReveal";
 
 type SectionKey = "features" | "how-it-works" | "pricing";
 
@@ -284,238 +285,270 @@ function buttonLinkClasses(variant: "primary" | "secondary") {
 }
 
 export function LandingPage() {
-  const [activeSection, setActiveSection] = useState<SectionKey>("features");
+  const [activeSection, setActiveSection] = useState<SectionKey | null>(null);
 
   useEffect(() => {
-    const sectionIds: SectionKey[] = ["features", "how-it-works", "pricing"];
+    const sectionIds: SectionKey[] = ["how-it-works", "features", "pricing"];
+
+    // Track intersecting sections to pick the one highest on screen
+    const intersectingSet = new Set<string>();
+
     const observer = new IntersectionObserver(
       (entries) => {
-        const visible = entries.find((entry) => entry.isIntersecting);
-        if (visible?.target.id === "features" || visible?.target.id === "how-it-works" || visible?.target.id === "pricing") {
-          setActiveSection(visible.target.id as SectionKey);
-        }
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            intersectingSet.add(entry.target.id);
+          } else {
+            intersectingSet.delete(entry.target.id);
+          }
+        });
+
+        // Pick first match in top-to-bottom order
+        const priority: SectionKey[] = ["how-it-works", "features", "pricing"];
+        const next = priority.find((id) => intersectingSet.has(id)) ?? null;
+        setActiveSection(next as SectionKey | null);
       },
-      { threshold: 0.35, rootMargin: "-18% 0px -55% 0px" }
+      // A section is considered "in view" when it occupies the middle band of the viewport
+      { threshold: 0, rootMargin: "-20% 0px -50% 0px" }
     );
 
     sectionIds.forEach((id) => {
       const element = document.getElementById(id);
-      if (element) {
-        observer.observe(element);
-      }
+      if (element) observer.observe(element);
     });
 
     return () => observer.disconnect();
   }, []);
 
+  const handleNavClick = (key: SectionKey) => {
+    setActiveSection(key);
+  };
+
   return (
     <main className="relative overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(46,91,138,0.12),_transparent_35%),linear-gradient(180deg,_#F8FAFC_0%,_#FFFFFF_38%,_#EEF3F8_100%)] text-[#101828] transition-colors duration-300 dark:bg-[radial-gradient(circle_at_top,_rgba(74,127,193,0.16),_transparent_35%),linear-gradient(180deg,_#0F1420_0%,_#101624_38%,_#0B111B_100%)] dark:text-zinc-100">
-      <PublicNavbar activeSection={activeSection} />
+      <PublicNavbar activeSection={activeSection} onNavClick={handleNavClick} />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-20 pt-28 sm:px-6 lg:px-8 lg:pt-32">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pt-28 sm:px-6 lg:px-8 lg:pt-36">
         <section className="grid items-center gap-14 py-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:py-16">
-          <div className="max-w-2xl">
-            <p className="inline-flex items-center rounded-full border border-[#2E5B8A]/15 bg-[#2E5B8A]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#2E5B8A] dark:border-[#4A7FC1]/20 dark:bg-[#4A7FC1]/12 dark:text-[#9DC4F0]">
-              AI Recruiter for modern hiring teams
-            </p>
-            <h1 className="mt-6 text-4xl font-bold tracking-tight text-[#101828] dark:text-white sm:text-5xl lg:text-6xl">
-              Hire smarter with AI-powered screening
-            </h1>
-            <p className="mt-6 max-w-xl text-base leading-7 text-zinc-600 dark:text-zinc-300 sm:text-lg">
-              Screen resumes with explainable AI, run secure candidate tests, and schedule interviews in one platform.
-            </p>
+          <ScrollReveal direction="up" durationMs={550}>
+            <div className="max-w-2xl">
+              <p className="inline-flex items-center rounded-full border border-[#2E5B8A]/15 bg-[#2E5B8A]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#2E5B8A] dark:border-[#4A7FC1]/20 dark:bg-[#4A7FC1]/12 dark:text-[#9DC4F0]">
+                AI Recruiter for modern hiring teams
+              </p>
+              <h1 className="mt-6 text-4xl font-bold tracking-tight text-[#101828] dark:text-white sm:text-5xl lg:text-6xl">
+                Hire smarter with AI-powered screening
+              </h1>
+              <p className="mt-6 max-w-xl text-base leading-7 text-zinc-600 dark:text-zinc-300 sm:text-lg">
+                Screen resumes with explainable AI, run secure candidate tests, and schedule interviews in one platform.
+              </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="/register" className={buttonLinkClasses("primary")}>
-                Get Started Free
-              </Link>
-              <a href="#how-it-works" className={buttonLinkClasses("secondary")}>
-                See how it works
-              </a>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link href="/register" className={buttonLinkClasses("primary")}>
+                  Get Started Free
+                </Link>
+                <a href="#how-it-works" className={buttonLinkClasses("secondary")}>
+                  See how it works
+                </a>
+              </div>
+
+              <div className="mt-8 grid max-w-xl gap-3 text-sm text-zinc-600 dark:text-zinc-400 sm:grid-cols-3">
+                <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 backdrop-blur dark:border-zinc-800 dark:bg-white/5">
+                  <p className="font-semibold text-[#101828] dark:text-white">Explainable AI</p>
+                  <p className="mt-1">See why a candidate matched before you decide.</p>
+                </div>
+                <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 backdrop-blur dark:border-zinc-800 dark:bg-white/5">
+                  <p className="font-semibold text-[#101828] dark:text-white">Secure by default</p>
+                  <p className="mt-1">Testing and interview steps stay in one place.</p>
+                </div>
+                <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 backdrop-blur dark:border-zinc-800 dark:bg-white/5">
+                  <p className="font-semibold text-[#101828] dark:text-white">Built for speed</p>
+                  <p className="mt-1">Go from posting to shortlist without manual triage.</p>
+                </div>
+              </div>
             </div>
+          </ScrollReveal>
 
-            <div className="mt-8 grid max-w-xl gap-3 text-sm text-zinc-600 dark:text-zinc-400 sm:grid-cols-3">
-              <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 backdrop-blur dark:border-zinc-800 dark:bg-white/5">
-                <p className="font-semibold text-[#101828] dark:text-white">Explainable AI</p>
-                <p className="mt-1">See why a candidate matched before you decide.</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 backdrop-blur dark:border-zinc-800 dark:bg-white/5">
-                <p className="font-semibold text-[#101828] dark:text-white">Secure by default</p>
-                <p className="mt-1">Testing and interview steps stay in one place.</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 backdrop-blur dark:border-zinc-800 dark:bg-white/5">
-                <p className="font-semibold text-[#101828] dark:text-white">Built for speed</p>
-                <p className="mt-1">Go from posting to shortlist without manual triage.</p>
-              </div>
+          <ScrollReveal direction="up" durationMs={550} staggerIndex={1} staggerDelayMs={120}>
+            <div className="relative">
+              <HeroPreview />
             </div>
-          </div>
-
-          <div className="relative">
-            <HeroPreview />
-          </div>
+          </ScrollReveal>
         </section>
 
-        <section id="how-it-works" className="scroll-mt-36 py-12 sm:py-16">
-          <SectionHeading
-            eyebrow="How It Works"
-            title="A simple hiring workflow"
-            description="Go from job posting to a shortlist of strong candidates without juggling separate tools."
-          />
+        <section id="how-it-works" className="scroll-mt-28 sm:scroll-mt-36 py-12 sm:py-16">
+          <ScrollReveal direction="up" durationMs={500}>
+            <SectionHeading
+              eyebrow="How It Works"
+              title="A simple hiring workflow"
+              description="Go from job posting to a shortlist of strong candidates without juggling separate tools."
+            />
+          </ScrollReveal>
 
           <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {howItWorks.map((step, index) => (
-              <article
-                key={step.title}
-                className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-sm backdrop-blur transition-transform duration-200 hover:-translate-y-1 dark:border-zinc-800 dark:bg-white/5"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  {iconCard(step.icon)}
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400 dark:text-zinc-500">
-                    Step {index + 1}
-                  </span>
-                </div>
-                <h3 className="mt-4 text-lg font-semibold text-[#101828] dark:text-white">{step.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{step.description}</p>
-              </article>
+              <ScrollReveal key={step.title} staggerIndex={index} staggerDelayMs={90}>
+                <article className="h-full rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-sm backdrop-blur transition-transform duration-200 hover:-translate-y-1 dark:border-zinc-800 dark:bg-white/5">
+                  <div className="flex items-center justify-between gap-3">
+                    {iconCard(step.icon)}
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400 dark:text-zinc-500">
+                      Step {index + 1}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 text-lg font-semibold text-[#101828] dark:text-white">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{step.description}</p>
+                </article>
+              </ScrollReveal>
             ))}
           </div>
         </section>
 
-        <section id="features" className="scroll-mt-36 py-12 sm:py-16">
-          <SectionHeading
-            eyebrow="Features"
-            title="Everything needed for modern recruiting"
-            description="Keep AI-assisted screening, testing, transcription, and analytics together in one clean workflow."
-          />
+        <section id="features" className="scroll-mt-28 sm:scroll-mt-36 py-12 sm:py-16">
+          <ScrollReveal direction="up" durationMs={500}>
+            <SectionHeading
+              eyebrow="Features"
+              title="Everything needed for modern recruiting"
+              description="Keep AI-assisted screening, testing, transcription, and analytics together in one clean workflow."
+            />
+          </ScrollReveal>
 
           <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {features.map((feature) => (
-              <article
-                key={feature.title}
-                className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-sm backdrop-blur transition-all duration-200 hover:border-[#2E5B8A]/25 hover:shadow-lg dark:border-zinc-800 dark:bg-white/5"
-              >
-                {iconCard(feature.icon)}
-                <h3 className="mt-4 text-lg font-semibold text-[#101828] dark:text-white">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{feature.description}</p>
-              </article>
+            {features.map((feature, index) => (
+              <ScrollReveal key={feature.title} staggerIndex={index} staggerDelayMs={90}>
+                <article className="h-full rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-sm backdrop-blur transition-all duration-200 hover:border-[#2E5B8A]/25 hover:shadow-lg dark:border-zinc-800 dark:bg-white/5">
+                  {iconCard(feature.icon)}
+                  <h3 className="mt-4 text-lg font-semibold text-[#101828] dark:text-white">{feature.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{feature.description}</p>
+                </article>
+              </ScrollReveal>
             ))}
           </div>
         </section>
 
-        <section className="py-12 sm:py-16">
-          <SectionHeading
-            eyebrow="Why AI Recruiter"
-            title="A cleaner alternative to fragmented hiring stacks"
-            description="Made for recruiters who want clarity, speed, and security without hidden enterprise complexity."
-          />
+        <section className="scroll-mt-28 sm:scroll-mt-36 py-12 sm:py-16">
+          <ScrollReveal direction="up" durationMs={500}>
+            <SectionHeading
+              eyebrow="Why AI Recruiter"
+              title="A cleaner alternative to fragmented hiring stacks"
+              description="Made for recruiters who want clarity, speed, and security without hidden enterprise complexity."
+            />
+          </ScrollReveal>
 
           <div className="mt-10 grid gap-4 lg:grid-cols-2">
-            {whyUs.map((point) => (
-              <div key={point} className="rounded-3xl border border-zinc-200 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-white/5">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-400">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M20 6L9 17l-5-5" />
-                    </svg>
+            {whyUs.map((point, index) => (
+              <ScrollReveal key={point} staggerIndex={index} staggerDelayMs={90}>
+                <div className="h-full rounded-3xl border border-zinc-200 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-white/5">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-400">
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M20 6L9 17l-5-5" />
+                      </svg>
+                    </div>
+                    <p className="text-sm leading-6 text-zinc-700 dark:text-zinc-300">{point}</p>
                   </div>
-                  <p className="text-sm leading-6 text-zinc-700 dark:text-zinc-300">{point}</p>
                 </div>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
         </section>
 
-        <section id="pricing" className="scroll-mt-36 py-12 sm:py-16">
-          <SectionHeading
-            eyebrow="Pricing"
-            title="Choose the plan that fits your hiring volume"
-            description="Start free, upgrade when you need more automation, and keep pricing predictable as your team grows."
-          />
+        <section id="pricing" className="scroll-mt-28 sm:scroll-mt-36 py-12 sm:py-16">
+          <ScrollReveal direction="up" durationMs={500}>
+            <SectionHeading
+              eyebrow="Pricing"
+              title="Choose the plan that fits your hiring volume"
+              description="Start free, upgrade when you need more automation, and keep pricing predictable as your team grows."
+            />
+          </ScrollReveal>
 
           <div className="mt-10 grid gap-4 lg:grid-cols-3">
-            {plans.map((plan) => (
-              <article
-                key={plan.name}
-                className={`relative rounded-3xl border p-6 shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-1 ${
-                  plan.popular
+            {plans.map((plan, index) => (
+              <ScrollReveal key={plan.name} staggerIndex={index} staggerDelayMs={100}>
+                <article
+                  className={`relative h-full rounded-3xl border p-6 shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-1 ${plan.popular
                     ? "border-[#2E5B8A]/25 bg-[#2E5B8A]/5 dark:border-[#4A7FC1]/35 dark:bg-[#4A7FC1]/10"
                     : "border-zinc-200 bg-white/80 dark:border-zinc-800 dark:bg-white/5"
-                }`}
-              >
-                {plan.popular ? (
-                  <span className="absolute right-6 top-6 rounded-full bg-[#2E5B8A] px-3 py-1 text-xs font-semibold text-white dark:bg-[#4A7FC1]">
-                    Most Popular
-                  </span>
-                ) : null}
-                <div className="pr-20">
-                  <h3 className="text-lg font-semibold text-[#101828] dark:text-white">{plan.name}</h3>
-                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{plan.description}</p>
-                </div>
-                <div className="mt-6 flex items-end gap-2">
-                  <span className="text-4xl font-bold tracking-tight text-[#101828] dark:text-white">{plan.price}</span>
-                  <span className="pb-1 text-sm text-zinc-500 dark:text-zinc-400">/mo</span>
-                </div>
-                <ul className="mt-6 space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
-                  {plan.bullets.map((bullet) => (
-                    <li key={bullet} className="flex items-start gap-3">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#2E5B8A]/10 text-[#2E5B8A] dark:bg-[#4A7FC1]/15 dark:text-[#9DC4F0]">
-                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M20 6L9 17l-5-5" />
-                        </svg>
-                      </span>
-                      <span>{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-8">
-                  <Link href={plan.href} className={buttonLinkClasses(plan.popular ? "primary" : "secondary") + " w-full"}>
-                    Get started
-                  </Link>
-                </div>
-              </article>
+                    }`}
+                >
+                  {plan.popular ? (
+                    <span className="absolute right-6 top-6 rounded-full bg-[#2E5B8A] px-3 py-1 text-xs font-semibold text-white dark:bg-[#4A7FC1]">
+                      Most Popular
+                    </span>
+                  ) : null}
+                  <div className="pr-20">
+                    <h3 className="text-lg font-semibold text-[#101828] dark:text-white">{plan.name}</h3>
+                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{plan.description}</p>
+                  </div>
+                  <div className="mt-6 flex items-end gap-2">
+                    <span className="text-4xl font-bold tracking-tight text-[#101828] dark:text-white">{plan.price}</span>
+                    <span className="pb-1 text-sm text-zinc-500 dark:text-zinc-400">/mo</span>
+                  </div>
+                  <ul className="mt-6 space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
+                    {plan.bullets.map((bullet) => (
+                      <li key={bullet} className="flex items-start gap-3">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#2E5B8A]/10 text-[#2E5B8A] dark:bg-[#4A7FC1]/15 dark:text-[#9DC4F0]">
+                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M20 6L9 17l-5-5" />
+                          </svg>
+                        </span>
+                        <span>{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-8">
+                    <Link href={plan.href} className={buttonLinkClasses(plan.popular ? "primary" : "secondary") + " w-full"}>
+                      Get started
+                    </Link>
+                  </div>
+                </article>
+              </ScrollReveal>
             ))}
           </div>
         </section>
 
-        <section className="py-12 sm:py-16">
-          <SectionHeading
-            eyebrow="FAQ"
-            title="Common questions, answered"
-            description="Get a quick read on how the platform works before you sign up."
-          />
+        <section className="scroll-mt-28 sm:scroll-mt-36 py-12 sm:py-16">
+          <ScrollReveal direction="up" durationMs={500}>
+            <SectionHeading
+              eyebrow="FAQ"
+              title="Common questions, answered"
+              description="Get a quick read on how the platform works before you sign up."
+            />
+          </ScrollReveal>
 
           <div className="mx-auto mt-10 max-w-4xl space-y-3">
-            {faqs.map((faq) => (
-              <details
-                key={faq.question}
-                className="group rounded-3xl border border-zinc-200 bg-white/80 p-5 shadow-sm backdrop-blur open:border-[#2E5B8A]/20 dark:border-zinc-800 dark:bg-white/5"
-              >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-base font-semibold text-[#101828] outline-none dark:text-white">
-                  {faq.question}
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-transform duration-200 group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-300">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-                    </svg>
-                  </span>
-                </summary>
-                <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">{faq.answer}</p>
-              </details>
+            {faqs.map((faq, index) => (
+              <ScrollReveal key={faq.question} staggerIndex={index} staggerDelayMs={80}>
+                <details
+                  className="group rounded-3xl border border-zinc-200 bg-white/80 p-5 shadow-sm backdrop-blur open:border-[#2E5B8A]/20 dark:border-zinc-800 dark:bg-white/5"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-base font-semibold text-[#101828] outline-none dark:text-white">
+                    {faq.question}
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-transform duration-200 group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-300">
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+                      </svg>
+                    </span>
+                  </summary>
+                  <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">{faq.answer}</p>
+                </details>
+              </ScrollReveal>
             ))}
           </div>
         </section>
 
         <section className="py-12 sm:py-16">
-          <div className="rounded-[32px] border border-[#2E5B8A]/15 bg-gradient-to-br from-[#2E5B8A] via-[#244A72] to-[#1B3654] px-6 py-10 text-center text-white shadow-2xl dark:border-white/10 dark:from-[#1B324D] dark:via-[#16273C] dark:to-[#0F1A28] sm:px-10 sm:py-14">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Ready to hire smarter? Get started free</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-sky-100/80 sm:text-base">
-              Launch your first job, screen candidates with AI, and bring secure testing into the same workflow.
-            </p>
-            <div className="mt-8 flex justify-center">
-              <Link href="/register" className={buttonLinkClasses("primary") + " px-6 py-3 text-base"}>
-                Get Started Free
-              </Link>
+          <ScrollReveal direction="up" durationMs={500}>
+            <div className="rounded-[32px] border border-[#2E5B8A]/15 bg-gradient-to-br from-[#2E5B8A] via-[#244A72] to-[#1B3654] px-6 py-10 text-center text-white shadow-2xl dark:border-white/10 dark:from-[#1B324D] dark:via-[#16273C] dark:to-[#0F1A28] sm:px-10 sm:py-14">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Ready to hire smarter? Get started free</h2>
+              <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-sky-100/80 sm:text-base">
+                Launch your first job, screen candidates with AI, and bring secure testing into the same workflow.
+              </p>
+              <div className="mt-8 flex justify-center">
+                <Link href="/register" className={buttonLinkClasses("primary") + " px-6 py-3 text-base"}>
+                  Get Started Free
+                </Link>
+              </div>
             </div>
-          </div>
+          </ScrollReveal>
         </section>
 
         <footer className="border-t border-zinc-200/70 pb-8 pt-8 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">

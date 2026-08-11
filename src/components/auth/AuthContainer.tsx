@@ -27,16 +27,16 @@ export function AuthContainer({ initialTab = "login" }: AuthContainerProps) {
   }, []);
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#FFFFFF] dark:bg-[#0F1420] text-[#1A1A1A] dark:text-[#E5E7EB] transition-colors duration-300 pt-24 sm:pt-28">
+    <div className="relative min-h-screen w-full flex flex-col lg:flex-row bg-[#FFFFFF] dark:bg-[#0F1420] text-[#1A1A1A] dark:text-[#E5E7EB] transition-colors duration-300">
       <PublicNavbar />
 
       {/* LEFT COLUMN: ~45% Width Illustration Panel */}
-      <div className="hidden lg:block lg:w-[45%] xl:w-[42%] min-h-[calc(100vh-6rem)] sticky top-24 xl:top-28">
+      <div className="hidden lg:block lg:w-[45%] xl:w-[42%] min-h-screen sticky top-0">
         <AuthIllustration />
       </div>
 
       {/* RIGHT COLUMN: ~55% Width Auth Form Container */}
-      <div className="flex-1 min-h-[calc(100vh-6rem)] relative flex flex-col justify-between p-4 sm:p-8 lg:p-14 bg-[#FFFFFF] dark:bg-[#0F1420] transition-colors duration-300">
+      <div className="flex-1 min-h-screen relative flex flex-col justify-between p-4 sm:p-8 lg:p-14 pt-28 sm:pt-32 lg:pt-36 bg-[#FFFFFF] dark:bg-[#0F1420] transition-colors duration-300">
         {/* Centered Auth Card */}
         <div className="my-auto py-4 sm:py-6 flex items-center justify-center w-full">
           <div className="w-full max-w-md p-5 sm:p-8 rounded-2xl bg-white dark:bg-[#1A2233] sm:shadow-lg sm:dark:shadow-2xl/40 sm:border border-zinc-200/60 dark:border-zinc-800/80 transition-all duration-300">

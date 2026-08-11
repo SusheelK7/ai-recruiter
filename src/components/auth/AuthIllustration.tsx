@@ -20,7 +20,7 @@ export function AuthIllustration() {
       <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-blue-400/20 dark:bg-blue-500/10 blur-3xl pointer-events-none" />
 
       {/* Brand Header */}
-      <div className="relative z-10 flex items-center gap-3">
+      <div className="relative z-10 flex items-center gap-3 pt-14 lg:pt-16">
         <Image
           src="/web-logo.png"
           alt="AI Recruiter"

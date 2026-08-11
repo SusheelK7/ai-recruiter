@@ -26,6 +26,10 @@
   --success-color: #22C55E;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: var(--bg-main);
   color: var(--text-primary);

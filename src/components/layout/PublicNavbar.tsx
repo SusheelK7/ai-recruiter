@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ThemeToggle } from "../ui/ThemeToggle";
@@ -9,22 +9,14 @@ type SectionKey = "features" | "how-it-works" | "pricing";
 
 interface PublicNavbarProps {
   activeSection?: SectionKey | null;
+  onNavClick?: (key: SectionKey) => void;
 }
 
 const navItems: Array<{ label: string; href: string; key: SectionKey }> = [
-  { label: "Features", href: "/#features", key: "features" },
   { label: "How It Works", href: "/#how-it-works", key: "how-it-works" },
+  { label: "Features", href: "/#features", key: "features" },
   { label: "Pricing", href: "/#pricing", key: "pricing" },
 ];
-
-function navLinkClasses(isActive: boolean) {
-  return [
-    "relative rounded-full px-3 py-2 text-sm font-medium transition-all duration-200",
-    isActive
-      ? "bg-[#2E5B8A]/10 text-[#2E5B8A] dark:bg-[#4A7FC1]/15 dark:text-[#9DC4F0]"
-      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800/80 dark:hover:text-white",
-  ].join(" ");
-}
 
 function actionLinkClasses(variant: "ghost" | "primary") {
   if (variant === "primary") {
@@ -44,43 +36,74 @@ function actionLinkClasses(variant: "ghost" | "primary") {
   ].join(" ");
 }
 
-export function PublicNavbar({ activeSection }: PublicNavbarProps) {
+export function PublicNavbar({ activeSection, onNavClick }: PublicNavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Refs for each nav link to measure indicator position
+  const navRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  const navContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Indicator position state: left offset and width within the nav container
+  const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 12);
     };
-
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
-
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
     const body = document.body;
-
     if (isMobileMenuOpen) {
       body.style.overflow = "hidden";
     } else {
       body.style.overflow = "";
     }
-
     return () => {
       body.style.overflow = "";
     };
   }, [isMobileMenuOpen]);
 
+  // Update sliding indicator whenever activeSection changes
+  useEffect(() => {
+    if (!activeSection) {
+      setIndicator(null);
+      return;
+    }
+    const linkEl = navRefs.current[activeSection];
+    const containerEl = navContainerRef.current;
+    if (!linkEl || !containerEl) {
+      setIndicator(null);
+      return;
+    }
+    const containerRect = containerEl.getBoundingClientRect();
+    const linkRect = linkEl.getBoundingClientRect();
+    setIndicator({
+      left: linkRect.left - containerRect.left,
+      width: linkRect.width,
+    });
+  }, [activeSection]);
+
+  const handleLinkClick = (key: SectionKey) => {
+    onNavClick?.(key);
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <>
       <header
-        className={`fixed left-1/2 top-4 z-50 w-[calc(100vw-1rem)] max-w-[1180px] -translate-x-1/2 transition-all duration-300 sm:w-[calc(100vw-2rem)] ${
-          isScrolled ? "shadow-[0_18px_40px_rgba(15,23,42,0.18)]" : "shadow-[0_10px_24px_rgba(15,23,42,0.12)]"
-        }`}
+        className={`fixed left-1/2 top-4 sm:top-5 lg:top-6 z-50 w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] max-w-[1180px] -translate-x-1/2 transition-all duration-300`}
       >
-        <div className="rounded-[28px] border border-white/55 bg-white/75 px-4 py-3 backdrop-blur-xl transition-colors duration-300 dark:border-white/10 dark:bg-[#0F1420]/70 sm:px-5 lg:px-6">
+        <div
+          className={`rounded-[28px] border px-4 py-3 backdrop-blur-xl transition-all duration-300 sm:px-5 lg:px-6 ${isScrolled
+              ? "border-white/80 bg-white/85 shadow-[0_18px_48px_rgba(15,23,42,0.18),0_6px_20px_rgba(15,23,42,0.08)] dark:border-white/20 dark:bg-[#0F1420]/90 dark:shadow-[0_18px_48px_rgba(0,0,0,0.65),0_0_30px_rgba(74,127,193,0.22)]"
+              : "border-white/60 bg-white/70 shadow-[0_12px_36px_rgba(15,23,42,0.12),0_4px_16px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-[#0F1420]/75 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5),0_0_24px_rgba(74,127,193,0.12)]"
+            }`}
+        >
           <div className="flex items-center gap-3">
             <Link href="/" className="flex shrink-0 items-center gap-2">
               <Image
@@ -101,16 +124,52 @@ export function PublicNavbar({ activeSection }: PublicNavbarProps) {
               />
             </Link>
 
-            <nav className="hidden flex-1 items-center justify-center gap-1 sm:flex">
-              {navItems.map((item) => (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  className={navLinkClasses(activeSection === item.key)}
-                >
-                  {item.label}
-                </Link>
-              ))}
+            {/* Desktop nav with animated sliding indicator */}
+            <nav
+              className="hidden flex-1 items-center justify-center sm:flex"
+              aria-label="Main navigation"
+            >
+              {/* Sliding pill indicator — rendered under links */}
+              <div ref={navContainerRef} className="relative flex items-center gap-1">
+                {/* Animated background pill */}
+                {indicator && (
+                  <span
+                    className="pointer-events-none absolute top-0 h-full rounded-full bg-[#2E5B8A]/10 dark:bg-[#4A7FC1]/15 transition-all duration-300 ease-out"
+                    style={{ left: indicator.left, width: indicator.width }}
+                    aria-hidden="true"
+                  />
+                )}
+                {navItems.map((item) => {
+                  const isActive = activeSection === item.key;
+                  return (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      ref={(el) => {
+                        navRefs.current[item.key] = el;
+                      }}
+                      onClick={() => handleLinkClick(item.key)}
+                      className={[
+                        "relative rounded-full px-3 py-2 text-sm font-medium transition-colors duration-200",
+                        isActive
+                          ? "text-[#2E5B8A] dark:text-[#9DC4F0]"
+                          : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white",
+                      ].join(" ")}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      {item.label}
+                      {/* Active underline accent */}
+                      <span
+                        className={[
+                          "absolute bottom-0.5 left-3 right-3 h-[2px] rounded-full bg-[#2E5B8A] dark:bg-[#7CA8D8] transition-all duration-300",
+                          isActive ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0",
+                        ].join(" ")}
+                        aria-hidden="true"
+                      />
+                    </Link>
+                  );
+                })}
+              </div>
             </nav>
 
             <div className="hidden items-center gap-2 sm:flex">
@@ -144,10 +203,10 @@ export function PublicNavbar({ activeSection }: PublicNavbarProps) {
         </div>
       </header>
 
+      {/* Mobile slide-down menu */}
       <div
-        className={`fixed inset-x-3 top-20 z-40 sm:hidden transition-all duration-300 ${
-          isMobileMenuOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0"
-        }`}
+        className={`fixed left-4 right-4 top-[74px] sm:top-[84px] z-40 sm:hidden transition-all duration-300 ${isMobileMenuOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0"
+          }`}
       >
         <div className="rounded-[28px] border border-white/50 bg-white/90 p-4 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-[#0F1420]/90">
           <div className="flex items-center justify-between gap-3">
@@ -167,17 +226,29 @@ export function PublicNavbar({ activeSection }: PublicNavbarProps) {
             </button>
           </div>
 
-          <nav className="mt-5 flex flex-col gap-2">
-            {navItems.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={navLinkClasses(activeSection === item.key) + " px-4 py-3 text-base"}
-              >
-                {item.label}
-              </Link>
-            ))}
+          <nav className="mt-5 flex flex-col gap-1" aria-label="Mobile navigation">
+            {navItems.map((item) => {
+              const isActive = activeSection === item.key;
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  onClick={() => handleLinkClick(item.key)}
+                  className={[
+                    "flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-[#2E5B8A]/10 text-[#2E5B8A] dark:bg-[#4A7FC1]/15 dark:text-[#9DC4F0]"
+                      : "text-zinc-600 hover:bg-zinc-100/80 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800/60 dark:hover:text-white",
+                  ].join(" ")}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  {isActive && (
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2E5B8A] dark:bg-[#7CA8D8]" aria-hidden="true" />
+                  )}
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="mt-5 flex flex-col gap-3">
