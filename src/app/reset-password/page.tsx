@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { PublicNavbar } from "@/components/layout/PublicNavbar";
 import { Input } from "@/components/ui/Input";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ValidationChecklist, validatePasswordRules, isPasswordValid } from "@/components/ui/ValidationChecklist";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
@@ -224,14 +224,14 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 bg-[#FFFFFF] dark:bg-[#0F1420] text-[#1A1A1A] dark:text-[#E5E7EB] relative">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
+    <div className="min-h-screen w-full bg-[#FFFFFF] text-[#1A1A1A] dark:bg-[#0F1420] dark:text-[#E5E7EB] relative pt-28 pb-10 px-4 sm:px-6">
+      <PublicNavbar />
       <Suspense fallback={
         <div className="text-center p-6 text-sm text-zinc-500 dark:text-zinc-400">Loading page...</div>
       }>
-        <ResetPasswordContent />
+        <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
+          <ResetPasswordContent />
+        </div>
       </Suspense>
     </div>
   );

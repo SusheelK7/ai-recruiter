@@ -1,5 +1,5 @@
-import { AuthContainer } from "@/components/auth/AuthContainer";
+import { LandingPage } from "@/components/landing/LandingPage";
 
 export default function Home() {
-  return <AuthContainer />;
+  return <LandingPage />;
 }

@@ -14,7 +14,7 @@ const publicExactPaths = new Set([
 
 const publicPrefixes = ['/jobs'];
 const protectedPrefixes = ['/dashboard'];
-const authEntryPaths = new Set(['/login', '/register']);
+const authEntryPaths = new Set(['/', '/login', '/register']);
 
 function base64UrlToUint8Array(input: string): Uint8Array {
   const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
