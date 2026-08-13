@@ -14,13 +14,13 @@ export function AuthIllustration() {
   }, []);
 
   return (
-    <div className="relative w-full h-full flex flex-col justify-between p-8 sm:p-12 overflow-hidden bg-gradient-to-br from-[#2E5B8A] via-[#244A72] to-[#1B3654] dark:from-[#1B324D] dark:via-[#16273C] dark:to-[#0F1A28] text-white">
+    <div className="relative w-full h-full flex flex-col justify-between sm:p-11 overflow-hidden bg-gradient-to-br from-[#2E5B8A] via-[#244A72] to-[#1B3654] dark:from-[#1B324D] dark:via-[#16273C] dark:to-[#0F1A28] text-white">
       {/* Background Decorative Blur Circles */}
       <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full bg-white/10 dark:bg-sky-400/5 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-blue-400/20 dark:bg-blue-500/10 blur-3xl pointer-events-none" />
 
       {/* Brand Header */}
-      <div className="relative z-10 flex items-center gap-3 pt-14 lg:pt-16">
+      <div className="relative z-10 flex items-center gap-3 ">
         <Image
           src="/web-logo.png"
           alt="AI Recruiter"

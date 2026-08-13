@@ -38,16 +38,19 @@ model User {
 }
 
 model Job {
-  id             String    @id @default(cuid())
-  companyId      String
-  company        Company   @relation(fields: [companyId], references: [id])
-  title          String
-  description    String
-  requiredSkills Json
-  expiryDate     DateTime?
-  status         String    @default("active")
-  applications   Application[]
-  test           Test?
+  id              String    @id @default(cuid())
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id])
+  title           String
+  description     String
+  requiredSkills  Json
+  experienceLevel String    @default("mid")
+  expiryDate      DateTime?
+  publicUrl       String    @unique
+  status          String    @default("active")
+  createdAt       DateTime  @default(now())
+  applications    Application[]
+  test            Test?
 }
 
 model Application {
