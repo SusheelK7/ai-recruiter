@@ -429,11 +429,10 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName }: Applicatio
               onDragLeave={() => setIsDragOverResume(false)}
               onDrop={handleResumeDrop}
               onClick={() => resumeInputRef.current?.click()}
-              className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all ${
-                isDragOverResume
+              className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all ${isDragOverResume
                   ? "border-[var(--brand-accent)] bg-[var(--brand-accent)]/5"
                   : "border-[var(--border-color)] hover:border-[var(--brand-accent)]/60 bg-[var(--bg-main)]/30"
-              }`}
+                }`}
             >
               <svg className="h-8 w-8 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -475,22 +474,20 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName }: Applicatio
                 <button
                   type="button"
                   onClick={() => handleModeChange("record")}
-                  className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                    videoMode === "record"
+                  className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${videoMode === "record"
                       ? "bg-[var(--brand-accent)] text-white shadow-sm"
                       : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                  }`}
+                    }`}
                 >
                   Record Cam
                 </button>
                 <button
                   type="button"
                   onClick={() => handleModeChange("upload")}
-                  className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                    videoMode === "upload"
+                  className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${videoMode === "upload"
                       ? "bg-[var(--brand-accent)] text-white shadow-sm"
                       : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                  }`}
+                    }`}
                 >
                   Upload File
                 </button>

@@ -20,9 +20,8 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <span
-      className={`inline-flex rounded-xl px-2.5 py-1 text-xs font-semibold capitalize ${
-        styles[status] ?? styles.draft
-      }`}
+      className={`inline-flex rounded-xl px-2.5 py-1 text-xs font-semibold capitalize ${styles[status] ?? styles.draft
+        }`}
     >
       {status}
     </span>
@@ -114,9 +113,8 @@ export function JobPostingsTable({ jobs, newJobId, onEditJob, onCloseJob }: JobP
             {jobs.map((job) => (
               <div
                 key={job.id}
-                className={`rounded-xl border border-[var(--border-color)] p-4 ${
-                  newJobId === job.id ? "animate-row-fade-in bg-[var(--brand-accent)]/5" : "bg-[var(--bg-main)]/30"
-                }`}
+                className={`rounded-xl border border-[var(--border-color)] p-4 ${newJobId === job.id ? "animate-row-fade-in bg-[var(--brand-accent)]/5" : "bg-[var(--bg-main)]/30"
+                  }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -174,9 +172,8 @@ export function JobPostingsTable({ jobs, newJobId, onEditJob, onCloseJob }: JobP
                 {jobs.map((job) => (
                   <tr
                     key={job.id}
-                    className={`border-b border-[var(--border-color)] last:border-0 transition-colors hover:bg-[var(--bg-main)]/50 ${
-                      newJobId === job.id ? "animate-row-fade-in bg-[var(--brand-accent)]/5" : ""
-                    }`}
+                    className={`border-b border-[var(--border-color)] last:border-0 transition-colors hover:bg-[var(--bg-main)]/50 ${newJobId === job.id ? "animate-row-fade-in bg-[var(--brand-accent)]/5" : ""
+                      }`}
                   >
                     <td className="px-5 py-4 font-medium text-[var(--text-primary)]">{job.title}</td>
                     <td className="px-5 py-4">

@@ -227,9 +227,8 @@ export default function JobsManagementPage() {
                 {filtered.map((job) => (
                   <tr
                     key={job.id}
-                    className={`border-b border-[var(--border-color)] last:border-0 transition-colors hover:bg-[var(--bg-main)]/50 ${
-                      newJobId === job.id ? "bg-[var(--brand-accent)]/5" : ""
-                    }`}
+                    className={`border-b border-[var(--border-color)] last:border-0 transition-colors hover:bg-[var(--bg-main)]/50 ${newJobId === job.id ? "bg-[var(--brand-accent)]/5" : ""
+                      }`}
                   >
                     <td className="px-5 py-4 font-medium text-[var(--text-primary)]">{job.title}</td>
                     <td className="px-5 py-4">
@@ -249,8 +248,8 @@ export default function JobsManagementPage() {
                       {job.daysUntilExpiry === null
                         ? "—"
                         : job.daysUntilExpiry <= 0
-                        ? "Expired"
-                        : `${job.daysUntilExpiry}d`}
+                          ? "Expired"
+                          : `${job.daysUntilExpiry}d`}
                     </td>
                     <td className="px-5 py-4 text-[var(--text-muted)]">{formatDate(job.createdAt)}</td>
                     <td className="px-5 py-4">
@@ -288,9 +287,8 @@ export default function JobsManagementPage() {
             {filtered.map((job) => (
               <div
                 key={job.id}
-                className={`rounded-xl border border-[var(--border-color)] p-4 ${
-                  newJobId === job.id ? "bg-[var(--brand-accent)]/5" : "bg-[var(--bg-main)]/30"
-                }`}
+                className={`rounded-xl border border-[var(--border-color)] p-4 ${newJobId === job.id ? "bg-[var(--brand-accent)]/5" : "bg-[var(--bg-main)]/30"
+                  }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -350,7 +348,7 @@ function CopyLinkButton({ publicUrl }: { publicUrl: string }) {
       await navigator.clipboard.writeText(`${window.location.origin}/jobs/${publicUrl}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch { }
   };
   return (
     <button

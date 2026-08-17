@@ -29,9 +29,8 @@ const STATUS_STYLES: Record<string, string> = {
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold capitalize ${
-        STATUS_STYLES[status] ?? STATUS_STYLES.applied
-      }`}
+      className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold capitalize ${STATUS_STYLES[status] ?? STATUS_STYLES.applied
+        }`}
     >
       {status}
     </span>
@@ -280,9 +279,8 @@ export default function ApplicationsReviewPage() {
                     <StatusBadge status={app.status} />
                     <span className="text-xs text-[var(--text-muted)]">{formatDate(app.createdAt)}</span>
                     <svg
-                      className={`h-4 w-4 text-[var(--text-muted)] transition-transform duration-200 ${
-                        isExpanded ? "rotate-180" : ""
-                      }`}
+                      className={`h-4 w-4 text-[var(--text-muted)] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                        }`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -363,11 +361,10 @@ export default function ApplicationsReviewPage() {
                                   e.stopPropagation();
                                   updateStatus(app.id, s);
                                 }}
-                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all disabled:opacity-50 ${
-                                  app.status === s
-                                    ? `${STATUS_STYLES[s]} ring-2 ring-offset-1 ring-current`
-                                    : "border border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--brand-accent)] hover:text-[var(--brand-accent)]"
-                                }`}
+                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all disabled:opacity-50 ${app.status === s
+                                  ? `${STATUS_STYLES[s]} ring-2 ring-offset-1 ring-current`
+                                  : "border border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--brand-accent)] hover:text-[var(--brand-accent)]"
+                                  }`}
                               >
                                 {updatingId === app.id && app.status !== s ? "…" : s}
                               </button>
