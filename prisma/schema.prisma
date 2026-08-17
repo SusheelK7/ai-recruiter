@@ -59,6 +59,7 @@ model Application {
   job             Job      @relation(fields: [jobId], references: [id])
   candidateName   String
   candidateEmail  String
+  candidatePhone  String?
   resumeUrl       String
   matchScore      Int?
   matchedSkills   Json?

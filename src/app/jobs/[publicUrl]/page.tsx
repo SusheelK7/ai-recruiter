@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { expireStaleJobs } from "@/lib/jobs";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { ApplicationForm } from "@/components/candidate/ApplicationForm";
 
 interface PublicJobPageProps {
   params: Promise<{ publicUrl: string }>;
@@ -124,19 +125,12 @@ export default async function PublicJobPage({ params }: PublicJobPageProps) {
               </div>
             )}
 
-            <div className="mt-8 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)]/50 p-4 sm:p-6">
-              <h3 className="text-base font-semibold text-[var(--text-primary)]">Apply for this position</h3>
-              <p className="mt-1 text-xs text-[var(--text-muted)] sm:text-sm">
-                Submit your application details below to be evaluated by {refreshed.company.name}&apos;s recruiting team.
-              </p>
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                <button
-                  type="button"
-                  className="rounded-xl bg-[var(--brand-accent)] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[var(--brand-accent-hover)]"
-                >
-                  Submit Application
-                </button>
-              </div>
+            <div className="mt-8">
+              <ApplicationForm
+                publicUrl={refreshed.publicUrl}
+                jobTitle={refreshed.title}
+                companyName={refreshed.company.name}
+              />
             </div>
           </div>
         )}

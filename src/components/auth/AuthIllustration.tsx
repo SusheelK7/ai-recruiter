@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 export function AuthIllustration() {
   const [cardIndex, setCardIndex] = useState(0);
@@ -21,14 +22,16 @@ export function AuthIllustration() {
 
       {/* Brand Header */}
       <div className="relative z-10 flex items-center gap-3 ">
-        <Image
-          src="/web-logo.png"
-          alt="AI Recruiter"
-          width={200}
-          height={56}
-          className="h-16 w-auto object-contain"
-          priority
-        />
+        <Link href="/">
+          <Image
+            src="/web-logo.png"
+            alt="AI Recruiter"
+            width={200}
+            height={56}
+            className="h-16 w-auto object-contain"
+            priority
+          />
+        </Link>
       </div>
 
       {/* Centered Modern Minimal Recruitment SVG Illustration */}
