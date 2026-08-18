@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { expireStaleJobs } from '@/lib/jobs';
 import { uploadResumeToR2 } from '@/lib/r2';
 import { transcribeVideoWithGemini } from '@/lib/transcribe';
+import {
+  extractTextFromResume,
+  validateResumeText,
+} from '@/lib/resume-parser';
+import { scoreResumeWithGemini } from '@/lib/resume-scoring';
 import { z } from 'zod';
 
 const applySchema = z.object({
@@ -92,7 +97,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    // 4. Resume Validation
+    // 4. Resume File Presence & Size Validation
     if (!resumeFile) {
       return NextResponse.json(
         { success: false, error: 'Resume file is required.' },
@@ -133,20 +138,65 @@ export async function POST(request: Request, { params }: RouteParams) {
     const resumeBuffer = Buffer.from(await resumeFile.arrayBuffer());
     const videoBuffer = Buffer.from(await videoFile.arrayBuffer());
 
-    // 7. Upload Resume to Cloudflare R2
+    // 7. Resume Text Extraction & Server-side Content Validation BEFORE any AI Call
+    let extractedResumeText = '';
+    try {
+      extractedResumeText = await extractTextFromResume(
+        resumeBuffer,
+        resumeFile.type,
+        resumeFile.name
+      );
+    } catch (parseError) {
+      console.warn('Resume file parsing error:', parseError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "We couldn't read your resume file. Please upload a valid PDF or DOCX file.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const textValidation = validateResumeText(extractedResumeText);
+    if (!textValidation.isValid) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            textValidation.error ||
+            "This doesn't appear to be a valid resume. Please check your file and try again.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 8. Upload Resume to Cloudflare R2
     const resumeUrl = await uploadResumeToR2(
       resumeBuffer,
       resumeFile.name,
       resumeFile.type || 'application/pdf'
     );
 
-    // 8. Send Video DIRECTLY to Gemini API for in-memory transcription (never stored)
+    // 9. Send Video DIRECTLY to Gemini API for in-memory transcription (never stored)
     const introTranscript = await transcribeVideoWithGemini(
       videoBuffer,
       videoFile.type || 'video/webm'
     );
 
-    // 9. Save Application to Database
+    // 10. AI Resume Screening & Scoring with Gemini (only runs on valid resumes)
+    let scoringResult = null;
+    try {
+      scoringResult = await scoreResumeWithGemini({
+        resumeText: extractedResumeText,
+        jobTitle: refreshedJob.title,
+        jobDescription: refreshedJob.description,
+        requiredSkills: (refreshedJob.requiredSkills as string[]) || [],
+      });
+    } catch (scoringError) {
+      console.error('AI resume scoring encountered error, proceeding with pending status:', scoringError);
+    }
+
+    // 11. Save Application to Database
     const application = await prisma.application.create({
       data: {
         jobId: refreshedJob.id,
@@ -155,7 +205,11 @@ export async function POST(request: Request, { params }: RouteParams) {
         candidatePhone,
         resumeUrl,
         introTranscript,
-        status: 'applied',
+        matchScore: scoringResult ? scoringResult.score : null,
+        matchedSkills: scoringResult ? scoringResult.matchedSkills : undefined,
+        missingSkills: scoringResult ? scoringResult.missingSkills : undefined,
+        aiReasoning: scoringResult ? scoringResult.reasoning : null,
+        status: scoringResult ? 'screened' : 'applied',
       },
     });
 
@@ -163,6 +217,11 @@ export async function POST(request: Request, { params }: RouteParams) {
       success: true,
       message: 'Application submitted successfully!',
       applicationId: application.id,
+      matchScore: application.matchScore,
+      matchedSkills: application.matchedSkills,
+      missingSkills: application.missingSkills,
+      aiReasoning: application.aiReasoning,
+      status: application.status,
     });
   } catch (error: any) {
     console.error('Application submission error:', error);

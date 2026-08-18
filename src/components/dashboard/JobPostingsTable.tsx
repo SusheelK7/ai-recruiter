@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import type { JobPosting } from "@/components/dashboard/types";
 
 interface JobPostingsTableProps {
@@ -20,8 +21,9 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <span
-      className={`inline-flex rounded-xl px-2.5 py-1 text-xs font-semibold capitalize ${styles[status] ?? styles.draft
-        }`}
+      className={`inline-flex rounded-xl px-2.5 py-1 text-xs font-semibold capitalize ${
+        styles[status] ?? styles.draft
+      }`}
     >
       {status}
     </span>
@@ -98,13 +100,15 @@ export function JobPostingsTable({ jobs, newJobId, onEditJob, onCloseJob }: JobP
   return (
     <div className="dashboard-card overflow-hidden rounded-2xl transition-colors duration-300">
       <div className="border-b border-[var(--border-color)] px-4 py-4 sm:px-5">
-        <h3 className="text-base font-semibold text-[var(--text-primary)]">Job Postings</h3>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">Manage, edit, and close your open roles</p>
+        <h3 className="text-base font-bold text-[var(--text-primary)]">Job Postings</h3>
+        <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+          Manage your active job listings and candidate pipelines.
+        </p>
       </div>
 
       {jobs.length === 0 ? (
-        <div className="px-4 py-10 text-center text-sm text-[var(--text-muted)] sm:px-5">
-          No job postings yet. Post your first role to get started.
+        <div className="p-8 text-center text-sm text-[var(--text-muted)]">
+          No job postings found. Post your first role to start screening candidates.
         </div>
       ) : (
         <>
@@ -113,21 +117,32 @@ export function JobPostingsTable({ jobs, newJobId, onEditJob, onCloseJob }: JobP
             {jobs.map((job) => (
               <div
                 key={job.id}
-                className={`rounded-xl border border-[var(--border-color)] p-4 ${newJobId === job.id ? "animate-row-fade-in bg-[var(--brand-accent)]/5" : "bg-[var(--bg-main)]/30"
-                  }`}
+                className={`rounded-xl border border-[var(--border-color)] p-4 transition-colors ${
+                  newJobId === job.id ? "animate-row-fade-in bg-[var(--brand-accent)]/5" : "bg-[var(--bg-main)]/30"
+                }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium text-[var(--text-primary)]">{job.title}</p>
+                    <p className="font-semibold text-[var(--text-primary)] truncate">{job.title}</p>
                     <p className="mt-1 text-xs text-[var(--text-muted)]">
-                      {job.applicationsCount} application{job.applicationsCount === 1 ? "" : "s"} · Expires in{" "}
+                      {job.applicationsCount} application{job.applicationsCount === 1 ? "" : "s"} ·{" "}
                       <ExpiryText daysUntilExpiry={job.daysUntilExpiry} />
                     </p>
                   </div>
                   <StatusBadge status={job.status} />
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border-color)]/60">
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--border-color)]/60 pt-3">
+                  <Link
+                    href={`/dashboard/applications?jobId=${job.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-accent)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--brand-accent)] hover:bg-[var(--brand-accent)]/20 transition-colors"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Candidates ({job.applicationsCount})
+                  </Link>
+
                   <CopyLinkButton publicUrl={job.publicUrl} />
 
                   {onEditJob && (
@@ -172,14 +187,34 @@ export function JobPostingsTable({ jobs, newJobId, onEditJob, onCloseJob }: JobP
                 {jobs.map((job) => (
                   <tr
                     key={job.id}
-                    className={`border-b border-[var(--border-color)] last:border-0 transition-colors hover:bg-[var(--bg-main)]/50 ${newJobId === job.id ? "animate-row-fade-in bg-[var(--brand-accent)]/5" : ""
-                      }`}
+                    className={`border-b border-[var(--border-color)] last:border-0 transition-colors hover:bg-[var(--bg-main)]/50 ${
+                      newJobId === job.id ? "animate-row-fade-in bg-[var(--brand-accent)]/5" : ""
+                    }`}
                   >
-                    <td className="px-5 py-4 font-medium text-[var(--text-primary)]">{job.title}</td>
+                    <td className="px-5 py-4 font-medium text-[var(--text-primary)]">
+                      <Link
+                        href={`/dashboard/applications?jobId=${job.id}`}
+                        className="hover:text-[var(--brand-accent)] transition-colors hover:underline"
+                        title="View ranked candidates for this job"
+                      >
+                        {job.title}
+                      </Link>
+                    </td>
                     <td className="px-5 py-4">
                       <StatusBadge status={job.status} />
                     </td>
-                    <td className="px-5 py-4 text-[var(--text-muted)]">{job.applicationsCount}</td>
+                    <td className="px-5 py-4 text-[var(--text-muted)]">
+                      <Link
+                        href={`/dashboard/applications?jobId=${job.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-accent)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--brand-accent)] hover:bg-[var(--brand-accent)]/20 transition-colors"
+                        title="View candidates"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {job.applicationsCount} Candidates
+                      </Link>
+                    </td>
                     <td className="px-5 py-4 text-[var(--text-muted)]">
                       <ExpiryText daysUntilExpiry={job.daysUntilExpiry} />
                     </td>
@@ -188,6 +223,12 @@ export function JobPostingsTable({ jobs, newJobId, onEditJob, onCloseJob }: JobP
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="inline-flex items-center justify-end gap-2">
+                        <Link
+                          href={`/dashboard/applications?jobId=${job.id}`}
+                          className="rounded-lg border border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/5 px-3 py-1 text-xs font-semibold text-[var(--brand-accent)] transition-colors hover:bg-[var(--brand-accent)]/15"
+                        >
+                          Rankings
+                        </Link>
                         {onEditJob && (
                           <button
                             type="button"

@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get('jobId') || undefined;
     const status = searchParams.get('status') || undefined;
+    const sortBy = searchParams.get('sortBy') || 'score'; // 'score' | 'date' | 'score_asc'
 
     // Get all jobs belonging to this company
     const companyJobs = await prisma.job.findMany({
@@ -34,11 +35,37 @@ export async function GET(request: NextRequest) {
       include: {
         job: { select: { id: true, title: true, publicUrl: true } },
       },
-      orderBy: { createdAt: 'desc' },
+    });
+
+    // Custom multi-field sorting:
+    // Default ('score'): matchScore descending (non-null first, then highest score), then by createdAt desc.
+    const sortedApplications = [...applications].sort((a, b) => {
+      if (sortBy === 'date') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+
+      if (sortBy === 'score_asc') {
+        if (a.matchScore === null && b.matchScore === null) {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        if (a.matchScore === null) return 1;
+        if (b.matchScore === null) return -1;
+        if (a.matchScore !== b.matchScore) return a.matchScore - b.matchScore;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+
+      // Default: matchScore descending (nulls last)
+      if (a.matchScore === null && b.matchScore === null) {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (a.matchScore === null) return 1;
+      if (b.matchScore === null) return -1;
+      if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
     return NextResponse.json({
-      applications: applications.map((app) => ({
+      applications: sortedApplications.map((app) => ({
         id: app.id,
         candidateName: app.candidateName,
         candidateEmail: app.candidateEmail,
@@ -47,6 +74,9 @@ export async function GET(request: NextRequest) {
         introTranscript: app.introTranscript,
         status: app.status,
         matchScore: app.matchScore,
+        matchedSkills: app.matchedSkills,
+        missingSkills: app.missingSkills,
+        aiReasoning: app.aiReasoning,
         createdAt: app.createdAt.toISOString(),
         job: app.job,
       })),

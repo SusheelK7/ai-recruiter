@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
 /**
  * Creates and returns an S3Client configured for Cloudflare R2.
@@ -62,4 +62,51 @@ export async function uploadResumeToR2(
 
   const endpoint = process.env.R2_ENDPOINT || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   return `${endpoint}/${bucketName}/${key}`;
+}
+
+/**
+ * Downloads a resume file from Cloudflare R2 given its stored URL.
+ * Returns the file body as a readable stream, content type, and a safe filename.
+ */
+export async function downloadResumeFromR2(resumeUrl: string): Promise<{
+  body: ReadableStream | NodeJS.ReadableStream;
+  contentType: string;
+  filename: string;
+}> {
+  const bucketName = process.env.R2_BUCKET_NAME;
+  if (!bucketName) {
+    throw new Error('R2_BUCKET_NAME is not configured in environment variables.');
+  }
+
+  // Extract the object key from the stored URL
+  // URL format: {endpoint}/{bucket}/{key}
+  const bucketPrefix = `/${bucketName}/`;
+  const bucketIndex = resumeUrl.indexOf(bucketPrefix);
+  if (bucketIndex === -1) {
+    throw new Error('Invalid resume URL: could not extract R2 object key.');
+  }
+  const key = resumeUrl.substring(bucketIndex + bucketPrefix.length);
+
+  const client = getR2Client();
+  const response = await client.send(
+    new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    })
+  );
+
+  if (!response.Body) {
+    throw new Error('Empty response body from R2.');
+  }
+
+  // Extract a human-readable filename from the key (strip the timestamp prefix)
+  const rawFilename = key.split('/').pop() || 'resume';
+  // The key format is "resumes/{timestamp}-{safeFilename}", so strip the leading timestamp-
+  const filename = rawFilename.replace(/^\d+-/, '') || 'resume';
+
+  return {
+    body: response.Body as any,
+    contentType: response.ContentType || 'application/octet-stream',
+    filename,
+  };
 }

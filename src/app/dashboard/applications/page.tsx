@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface Application {
   id: string;
@@ -11,60 +12,118 @@ interface Application {
   introTranscript: string | null;
   status: string;
   matchScore: number | null;
+  matchedSkills: string[] | null;
+  missingSkills: string[] | null;
+  aiReasoning: string | null;
   createdAt: string;
   job: { id: string; title: string; publicUrl: string };
 }
 
-const STATUS_OPTIONS = ["applied", "screened", "interviewed", "hired", "rejected"];
+const STATUS_OPTIONS = ["applied", "screened", "tested", "interviewed", "hired", "rejected"];
 
 const STATUS_STYLES: Record<string, string> = {
-  applied: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
-  screened: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
-  interviewed: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300",
-  hired: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-  rejected: "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
-  tested: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300",
+  applied: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/50",
+  screened: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 dark:border-purple-800/50",
+  tested: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 border-orange-200 dark:border-orange-800/50",
+  interviewed: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300 border-violet-200 dark:border-violet-800/50",
+  hired: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50",
+  rejected: "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800/50",
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold capitalize ${STATUS_STYLES[status] ?? STATUS_STYLES.applied
-        }`}
+      className={`inline-flex items-center rounded-lg border px-2.5 py-0.5 text-xs font-semibold capitalize ${
+        STATUS_STYLES[status] ?? STATUS_STYLES.applied
+      }`}
     >
       {status}
     </span>
   );
 }
 
+function MatchScoreBadge({ score }: { score: number | null }) {
+  if (score === null || score === undefined) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+        <svg className="h-3.5 w-3.5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Scoring Pending
+      </span>
+    );
+  }
+
+  if (score >= 80) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 shadow-sm dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <svg className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+        {score}% Match
+      </span>
+    );
+  }
+
+  if (score >= 60) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300">
+        <svg className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        {score}% Match
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-300">
+      <svg className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+      {score}% Match
+    </span>
+  );
+}
+
 function SkeletonCard() {
   return (
-    <div className="dashboard-card animate-pulse rounded-2xl p-5">
+    <div className="dashboard-card animate-pulse rounded-2xl p-5 space-y-3">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 space-y-2">
           <div className="h-4 w-40 rounded bg-[var(--border-color)]" />
           <div className="h-3 w-56 rounded bg-[var(--border-color)]" />
         </div>
-        <div className="h-6 w-16 rounded-lg bg-[var(--border-color)]" />
+        <div className="h-6 w-24 rounded-lg bg-[var(--border-color)]" />
       </div>
-      <div className="mt-4 space-y-2">
-        <div className="h-3 w-full rounded bg-[var(--border-color)]" />
-        <div className="h-3 w-3/4 rounded bg-[var(--border-color)]" />
-      </div>
+      <div className="h-3 w-full rounded bg-[var(--border-color)]" />
+      <div className="h-3 w-3/4 rounded bg-[var(--border-color)]" />
     </div>
   );
 }
 
-export default function ApplicationsReviewPage() {
+function ApplicationsContent() {
+  const searchParams = useSearchParams();
+  const initialJobId = searchParams.get("jobId") || "all";
+
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterJob, setFilterJob] = useState<string>("all");
+  const [filterJob, setFilterJob] = useState<string>(initialJobId);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"score_desc" | "score_asc" | "date_desc">("score_desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState<string | null>(null);
+
+  // Sync filterJob if URL param changes
+  useEffect(() => {
+    const paramJobId = searchParams.get("jobId");
+    if (paramJobId) {
+      setFilterJob(paramJobId);
+    }
+  }, [searchParams]);
 
   const fetchApplications = useCallback(async () => {
     try {
@@ -105,22 +164,59 @@ export default function ApplicationsReviewPage() {
   };
 
   // Derived: unique jobs for filter dropdown
-  const uniqueJobs = Array.from(
-    new Map(applications.map((a) => [a.job.id, a.job])).values()
-  );
+  const uniqueJobs = useMemo(() => {
+    return Array.from(new Map(applications.map((a) => [a.job.id, a.job])).values());
+  }, [applications]);
 
-  // Filtered applications
-  const filtered = applications.filter((app) => {
-    const matchJob = filterJob === "all" || app.job.id === filterJob;
-    const matchStatus = filterStatus === "all" || app.status === filterStatus;
-    const q = searchQuery.toLowerCase();
-    const matchSearch =
-      !q ||
-      app.candidateName.toLowerCase().includes(q) ||
-      app.candidateEmail.toLowerCase().includes(q) ||
-      app.job.title.toLowerCase().includes(q);
-    return matchJob && matchStatus && matchSearch;
-  });
+  // Derived metrics
+  const activeJobTitle = uniqueJobs.find((j) => j.id === filterJob)?.title;
+  const scoredCount = applications.filter((a) => a.matchScore !== null).length;
+  const avgScore =
+    scoredCount > 0
+      ? Math.round(
+          applications
+            .filter((a) => a.matchScore !== null)
+            .reduce((sum, a) => sum + (a.matchScore || 0), 0) / scoredCount
+        )
+      : null;
+
+  // Filtered & Sorted applications
+  const filtered = useMemo(() => {
+    const result = applications.filter((app) => {
+      const matchJob = filterJob === "all" || app.job.id === filterJob;
+      const matchStatus = filterStatus === "all" || app.status === filterStatus;
+      const q = searchQuery.toLowerCase();
+      const matchSearch =
+        !q ||
+        app.candidateName.toLowerCase().includes(q) ||
+        app.candidateEmail.toLowerCase().includes(q) ||
+        app.job.title.toLowerCase().includes(q);
+      return matchJob && matchStatus && matchSearch;
+    });
+
+    return result.sort((a, b) => {
+      if (sortBy === "date_desc") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+
+      if (sortBy === "score_asc") {
+        if (a.matchScore === null && b.matchScore === null) {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        if (a.matchScore === null) return 1;
+        if (b.matchScore === null) return -1;
+        return a.matchScore - b.matchScore;
+      }
+
+      // Default: score_desc (nulls last)
+      if (a.matchScore === null && b.matchScore === null) {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (a.matchScore === null) return 1;
+      if (b.matchScore === null) return -1;
+      return b.matchScore - a.matchScore;
+    });
+  }, [applications, filterJob, filterStatus, searchQuery, sortBy]);
 
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString("en-US", {
@@ -134,25 +230,40 @@ export default function ApplicationsReviewPage() {
       {/* Page Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)] sm:text-2xl lg:text-3xl">
-            Applications
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-[var(--text-primary)] sm:text-2xl lg:text-3xl">
+              Candidate Rankings & Applications
+            </h1>
+            {filterJob !== "all" && activeJobTitle && (
+              <span className="hidden sm:inline-flex items-center rounded-lg bg-[var(--brand-accent)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--brand-accent)]">
+                {activeJobTitle}
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Review candidate submissions, resumes, and video transcripts.
+            AI-screened candidates ranked by match score, extracted skills, and evaluation breakdown.
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-1.5">
-          <span className="text-xs font-semibold text-[var(--text-muted)]">Total</span>
-          <span className="rounded-lg bg-[var(--brand-accent)]/10 px-2 py-0.5 text-xs font-bold text-[var(--brand-accent)]">
-            {applications.length}
-          </span>
+
+        {/* Quick Stats Badges */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-1.5 shadow-sm">
+            <span className="text-xs font-medium text-[var(--text-muted)]">Total:</span>
+            <span className="text-xs font-bold text-[var(--text-primary)]">{applications.length}</span>
+          </div>
+          {avgScore !== null && (
+            <div className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/50 px-3 py-1.5 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/20">
+              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Avg Score:</span>
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{avgScore}%</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Filters Row */}
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+      {/* Filters & Sorting Bar */}
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Search */}
-        <div className="relative flex-1">
+        <div className="relative">
           <svg
             className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]"
             fill="none"
@@ -164,7 +275,7 @@ export default function ApplicationsReviewPage() {
           </svg>
           <input
             type="text"
-            placeholder="Search by name, email, or job…"
+            placeholder="Search by candidate or job…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] py-2.5 pl-9 pr-3 text-sm text-[var(--text-primary)] focus:border-[var(--brand-accent)] focus:outline-none transition-colors"
@@ -172,42 +283,56 @@ export default function ApplicationsReviewPage() {
         </div>
 
         {/* Job Filter */}
-        <select
-          value={filterJob}
-          onChange={(e) => setFilterJob(e.target.value)}
-          className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--brand-accent)] focus:outline-none"
-        >
-          <option value="all">All Jobs</option>
-          {uniqueJobs.map((job) => (
-            <option key={job.id} value={job.id}>
-              {job.title}
-            </option>
-          ))}
-        </select>
+        <div>
+          <select
+            value={filterJob}
+            onChange={(e) => setFilterJob(e.target.value)}
+            className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--brand-accent)] focus:outline-none"
+          >
+            <option value="all">All Jobs ({applications.length})</option>
+            {uniqueJobs.map((job) => (
+              <option key={job.id} value={job.id}>
+                {job.title}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {/* Status Filter */}
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--brand-accent)] focus:outline-none"
-        >
-          <option value="all">All Statuses</option>
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s} className="capitalize">
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </option>
-          ))}
-        </select>
+        <div>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--brand-accent)] focus:outline-none"
+          >
+            <option value="all">All Statuses</option>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s} className="capitalize">
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Sorting Dropdown */}
+        <div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] px-3 py-2.5 text-sm font-medium text-[var(--text-primary)] focus:border-[var(--brand-accent)] focus:outline-none"
+          >
+            <option value="score_desc">Sort: Highest Match Score</option>
+            <option value="score_asc">Sort: Lowest Match Score</option>
+            <option value="date_desc">Sort: Newest Applied</option>
+          </select>
+        </div>
       </div>
 
-      {/* Error State */}
+      {/* Error Banner */}
       {error && (
         <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
           {error}
-          <button
-            onClick={fetchApplications}
-            className="ml-3 underline hover:no-underline"
-          >
+          <button onClick={fetchApplications} className="ml-3 font-semibold underline hover:no-underline">
             Retry
           </button>
         </div>
@@ -231,56 +356,71 @@ export default function ApplicationsReviewPage() {
             </svg>
           </div>
           <h3 className="mt-4 text-base font-semibold text-[var(--text-primary)]">
-            {applications.length === 0 ? "No Applications Yet" : "No Results Found"}
+            {applications.length === 0 ? "No Applications Yet" : "No Matching Applications"}
           </h3>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
             {applications.length === 0
-              ? "Candidates will appear here once they apply to your job postings."
-              : "Try adjusting your search or filter criteria."}
+              ? "Candidates will appear here ranked by AI match score once they apply."
+              : "Try adjusting your search query, job selection, or status filters."}
           </p>
         </div>
       )}
 
-      {/* Application Cards */}
+      {/* Candidate Application Cards */}
       {!loading && !error && filtered.length > 0 && (
         <div className="space-y-3">
-          {filtered.map((app) => {
+          {filtered.map((app, index) => {
             const isExpanded = expandedId === app.id;
             const isShowingTranscript = showTranscript === app.id;
+            const matchedList = Array.isArray(app.matchedSkills) ? app.matchedSkills : [];
+            const missingList = Array.isArray(app.missingSkills) ? app.missingSkills : [];
 
             return (
               <div
                 key={app.id}
-                className="dashboard-card overflow-hidden rounded-2xl transition-all duration-200"
+                className={`dashboard-card overflow-hidden rounded-2xl transition-all duration-200 border ${
+                  isExpanded ? "border-[var(--brand-accent)]/40 shadow-md" : "border-[var(--border-color)]"
+                }`}
               >
-                {/* Card Header */}
+                {/* Main Card Summary */}
                 <div
-                  className="flex cursor-pointer items-start justify-between gap-4 p-4 hover:bg-[var(--bg-main)]/50 sm:p-5"
+                  className="flex cursor-pointer flex-col gap-3 p-4 hover:bg-[var(--bg-main)]/50 sm:flex-row sm:items-center sm:justify-between sm:p-5"
                   onClick={() => setExpandedId(isExpanded ? null : app.id)}
                 >
-                  {/* Candidate Avatar + Info */}
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-accent)]/10 text-sm font-bold text-[var(--brand-accent)] uppercase">
-                      {app.candidateName.charAt(0)}
+                  {/* Left: Rank #, Candidate Info & Job */}
+                  <div className="flex items-start gap-3.5 min-w-0">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-accent)]/10 text-sm font-bold text-[var(--brand-accent)]">
+                      {index + 1}
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-[var(--text-primary)] truncate">
-                        {app.candidateName}
-                      </p>
-                      <p className="text-xs text-[var(--text-muted)] truncate">{app.candidateEmail}</p>
-                      <p className="mt-0.5 text-xs font-medium text-[var(--brand-accent)] truncate">
-                        {app.job.title}
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-[var(--text-primary)] truncate text-base">
+                          {app.candidateName}
+                        </span>
+                        <StatusBadge status={app.status} />
+                      </div>
+
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
+                        <span>{app.candidateEmail}</span>
+                        {app.candidatePhone && <span>• {app.candidatePhone}</span>}
+                        <span>• {formatDate(app.createdAt)}</span>
+                      </div>
+
+                      <p className="mt-1 text-xs font-semibold text-[var(--brand-accent)] truncate">
+                        Position: {app.job.title}
                       </p>
                     </div>
                   </div>
 
-                  {/* Status + Date + Expand */}
-                  <div className="flex shrink-0 flex-col items-end gap-2">
-                    <StatusBadge status={app.status} />
-                    <span className="text-xs text-[var(--text-muted)]">{formatDate(app.createdAt)}</span>
+                  {/* Right: Score Badge & Actions */}
+                  <div className="flex shrink-0 items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0">
+                    <MatchScoreBadge score={app.matchScore} />
+
                     <svg
-                      className={`h-4 w-4 text-[var(--text-muted)] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
-                        }`}
+                      className={`h-5 w-5 text-[var(--text-muted)] transition-transform duration-200 ${
+                        isExpanded ? "rotate-180 text-[var(--brand-accent)]" : ""
+                      }`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -291,89 +431,130 @@ export default function ApplicationsReviewPage() {
                   </div>
                 </div>
 
-                {/* Expanded Detail Panel */}
+                {/* Quick Skills Preview (Collapsed view highlights) */}
+                {(matchedList.length > 0 || missingList.length > 0 || app.aiReasoning) && !isExpanded && (
+                  <div className="border-t border-[var(--border-color)]/60 bg-[var(--bg-main)]/20 px-4 py-2.5 sm:px-5">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      {matchedList.slice(0, 3).map((skill, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        >
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          {skill}
+                        </span>
+                      ))}
+                      {matchedList.length > 3 && (
+                        <span className="text-[var(--text-muted)]">+{matchedList.length - 3} more</span>
+                      )}
+                      {app.aiReasoning && (
+                        <span className="ml-auto hidden text-[var(--text-muted)] truncate max-w-md md:inline-block italic">
+                          "{app.aiReasoning}"
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Expanded Detailed Breakdown */}
                 {isExpanded && (
-                  <div className="animate-fade-slide border-t border-[var(--border-color)] bg-[var(--bg-main)]/30 px-4 py-4 sm:px-5">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      {/* Left: Candidate Details */}
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
-                          Candidate Info
+                  <div className="animate-fade-slide border-t border-[var(--border-color)] bg-[var(--bg-main)]/40 p-4 sm:p-6 space-y-6">
+                    {/* AI Scoring Summary Callout */}
+                    <div className="rounded-xl border border-[var(--brand-accent)]/30 bg-[var(--brand-accent)]/5 p-4">
+                      <div className="flex items-center gap-2">
+                        <svg className="h-5 w-5 text-[var(--brand-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                          AI Screening Evaluation ({app.matchScore !== null ? `${app.matchScore}/100 Match Score` : "Pending"})
                         </h4>
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]/90">
+                        {app.aiReasoning ||
+                          (app.matchScore === null
+                            ? "Scoring is currently pending or the AI evaluation service was temporarily unavailable during submission."
+                            : "Candidate match evaluated against target job requirements.")}
+                      </p>
+                    </div>
 
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <svg className="h-4 w-4 shrink-0 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                            </svg>
-                            <span className="text-[var(--text-primary)]">{app.candidateEmail}</span>
-                          </div>
-                          {app.candidatePhone && (
-                            <div className="flex items-center gap-2">
-                              <svg className="h-4 w-4 shrink-0 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                              </svg>
-                              <span className="text-[var(--text-primary)]">{app.candidatePhone}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <svg className="h-4 w-4 shrink-0 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span className="text-[var(--text-muted)]">Applied {formatDate(app.createdAt)}</span>
-                          </div>
+                    {/* Matched vs Missing Skills Grid */}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      {/* Matched Skills */}
+                      <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                        <div className="flex items-center gap-2 mb-3">
+                          <svg className="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          <h5 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                            Matched Skills ({matchedList.length})
+                          </h5>
                         </div>
+                        {matchedList.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {matchedList.map((skill, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300/80 bg-emerald-100/70 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-900/40 dark:text-emerald-200"
+                              >
+                                ✓ {skill}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs italic text-[var(--text-muted)]">No explicit matched skills extracted.</p>
+                        )}
+                      </div>
 
-                        {/* Resume Download */}
-                        <div className="pt-1">
+                      {/* Missing / Gap Skills */}
+                      <div className="rounded-xl border border-rose-200/80 bg-rose-50/40 p-4 dark:border-rose-900/40 dark:bg-rose-950/20">
+                        <div className="flex items-center gap-2 mb-3">
+                          <svg className="h-4 w-4 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          <h5 className="text-xs font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300">
+                            Missing Skills / Gaps ({missingList.length})
+                          </h5>
+                        </div>
+                        {missingList.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {missingList.map((skill, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-1 rounded-lg border border-rose-300/80 bg-rose-100/70 px-2.5 py-1 text-xs font-semibold text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/40 dark:text-rose-200"
+                              >
+                                − {skill}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs italic text-[var(--text-muted)]">No critical missing skills flagged.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Candidate Actions & Assets */}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-2">
+                      {/* Left: Resume & Assets */}
+                      <div className="space-y-3">
+                        <h5 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                          Candidate Documents & Media
+                        </h5>
+                        <div className="flex flex-wrap gap-2">
                           <a
-                            href={app.resumeUrl}
+                            href={`/api/applications/${app.id}/resume`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 rounded-xl border border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/5 px-4 py-2 text-xs font-semibold text-[var(--brand-accent)] transition-all hover:bg-[var(--brand-accent)]/15"
+                            download
+                            className="inline-flex items-center gap-2 rounded-xl border border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/10 px-4 py-2 text-xs font-semibold text-[var(--brand-accent)] transition-all hover:bg-[var(--brand-accent)]/20"
                           >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
                             Download Resume
                           </a>
-                        </div>
-                      </div>
 
-                      {/* Right: Actions + Transcript */}
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
-                          HR Actions
-                        </h4>
-
-                        {/* Status Update */}
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-[var(--text-muted)]">
-                            Update Status
-                          </label>
-                          <div className="flex flex-wrap gap-2">
-                            {STATUS_OPTIONS.map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                disabled={updatingId === app.id || app.status === s}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateStatus(app.id, s);
-                                }}
-                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all disabled:opacity-50 ${app.status === s
-                                  ? `${STATUS_STYLES[s]} ring-2 ring-offset-1 ring-current`
-                                  : "border border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--brand-accent)] hover:text-[var(--brand-accent)]"
-                                  }`}
-                              >
-                                {updatingId === app.id && app.status !== s ? "…" : s}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Video Transcript Toggle */}
-                        <div className="pt-1">
                           <button
                             type="button"
                             onClick={(e) => {
@@ -389,17 +570,44 @@ export default function ApplicationsReviewPage() {
                           </button>
                         </div>
                       </div>
+
+                      {/* Right: Recruiter Status Actions */}
+                      <div className="space-y-3">
+                        <h5 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                          Update Pipeline Stage
+                        </h5>
+                        <div className="flex flex-wrap gap-2">
+                          {STATUS_OPTIONS.map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              disabled={updatingId === app.id || app.status === s}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateStatus(app.id, s);
+                              }}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all disabled:opacity-50 ${
+                                app.status === s
+                                  ? `${STATUS_STYLES[s]} ring-2 ring-offset-1 ring-current`
+                                  : "border border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--brand-accent)] hover:text-[var(--brand-accent)]"
+                              }`}
+                            >
+                              {updatingId === app.id && app.status !== s ? "…" : s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Transcript Panel */}
+                    {/* Video Transcript Drawer */}
                     {isShowingTranscript && (
-                      <div className="mt-4 rounded-xl border border-violet-200/80 bg-violet-50/60 p-4 dark:border-violet-900/40 dark:bg-violet-950/20">
+                      <div className="rounded-xl border border-violet-200/80 bg-violet-50/60 p-4 dark:border-violet-900/40 dark:bg-violet-950/20">
                         <div className="mb-2 flex items-center gap-2">
                           <svg className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                           </svg>
                           <h5 className="text-xs font-bold text-violet-700 dark:text-violet-300">
-                            AI-Transcribed Video Introduction
+                            Candidate Video Introduction Transcript
                           </h5>
                         </div>
                         {app.introTranscript ? (
@@ -408,7 +616,7 @@ export default function ApplicationsReviewPage() {
                           </p>
                         ) : (
                           <p className="text-sm italic text-violet-600/70 dark:text-violet-400/70">
-                            No transcript available. The video may have been too short, had no speech, or transcription failed during submission.
+                            No transcript available.
                           </p>
                         )}
                       </div>
@@ -421,5 +629,13 @@ export default function ApplicationsReviewPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ApplicationsReviewPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-[var(--text-muted)]">Loading applications dashboard...</div>}>
+      <ApplicationsContent />
+    </Suspense>
   );
 }

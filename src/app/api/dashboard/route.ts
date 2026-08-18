@@ -185,8 +185,10 @@ export async function GET(request: Request) {
       };
     });
 
+    const activeJobIds = new Set(jobs.filter((job) => job.status === 'active').map((job) => job.id));
+
     const topCandidates = [...applications]
-      .filter((app) => app.matchScore !== null)
+      .filter((app) => app.matchScore !== null && activeJobIds.has(app.jobId))
       .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
       .slice(0, 5)
       .map((app) => ({

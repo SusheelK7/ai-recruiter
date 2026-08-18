@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { PostJobModal } from "@/components/dashboard/PostJobModal";
 import { EditJobModal } from "@/components/dashboard/EditJobModal";
 import type { CreatedJob, JobPosting } from "@/components/dashboard/types";
@@ -230,19 +231,31 @@ export default function JobsManagementPage() {
                     className={`border-b border-[var(--border-color)] last:border-0 transition-colors hover:bg-[var(--bg-main)]/50 ${newJobId === job.id ? "bg-[var(--brand-accent)]/5" : ""
                       }`}
                   >
-                    <td className="px-5 py-4 font-medium text-[var(--text-primary)]">{job.title}</td>
+                    <td className="px-5 py-4 font-medium text-[var(--text-primary)]">
+                      <Link
+                        href={`/dashboard/applications?jobId=${job.id}`}
+                        className="hover:text-[var(--brand-accent)] transition-colors hover:underline"
+                        title="View candidates for this job"
+                      >
+                        {job.title}
+                      </Link>
+                    </td>
                     <td className="px-5 py-4">
                       <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold capitalize ${STATUS_STYLES[job.status] ?? STATUS_STYLES.expired}`}>
                         {job.status}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-[var(--text-muted)]">
-                      <span className="inline-flex items-center gap-1">
+                      <Link
+                        href={`/dashboard/applications?jobId=${job.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-accent)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--brand-accent)] hover:bg-[var(--brand-accent)]/20 transition-colors"
+                        title="View ranked candidates"
+                      >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         {job.applicationsCount}
-                      </span>
+                      </Link>
                     </td>
                     <td className="px-5 py-4 text-[var(--text-muted)]">
                       {job.daysUntilExpiry === null
@@ -257,6 +270,12 @@ export default function JobsManagementPage() {
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="inline-flex items-center justify-end gap-2">
+                        <Link
+                          href={`/dashboard/applications?jobId=${job.id}`}
+                          className="rounded-lg border border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/5 px-3 py-1 text-xs font-semibold text-[var(--brand-accent)] transition-colors hover:bg-[var(--brand-accent)]/15"
+                        >
+                          Rankings
+                        </Link>
                         <button
                           type="button"
                           onClick={() => setEditingJob(job)}
@@ -304,6 +323,15 @@ export default function JobsManagementPage() {
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--border-color)]/60 pt-3">
+                  <Link
+                    href={`/dashboard/applications?jobId=${job.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-accent)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--brand-accent)] hover:bg-[var(--brand-accent)]/20 transition-colors"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Candidates ({job.applicationsCount})
+                  </Link>
                   <CopyLinkButton publicUrl={job.publicUrl} />
                   <button
                     type="button"
