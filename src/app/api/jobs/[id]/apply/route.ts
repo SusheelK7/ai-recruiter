@@ -8,6 +8,7 @@ import {
   validateResumeText,
 } from '@/lib/resume-parser';
 import { scoreResumeWithGemini } from '@/lib/resume-scoring';
+import { sendApplicationConfirmationEmail } from '@/lib/email';
 import { z } from 'zod';
 
 const applySchema = z.object({
@@ -54,6 +55,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const refreshedJob = await prisma.job.findUnique({
       where: { id: job.id },
+      include: { company: { select: { name: true } } },
     });
 
     if (!refreshedJob) {
@@ -79,6 +81,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     const candidateName = formData.get('candidateName') as string;
     const candidateEmail = formData.get('candidateEmail') as string;
     const candidatePhone = formData.get('candidatePhone') as string;
+    const coverLetterRaw = formData.get('coverLetter') as string | null;
+    const coverLetter = coverLetterRaw ? coverLetterRaw.trim() : null;
     const resumeFile = formData.get('resume') as File | null;
     const videoFile = formData.get('video') as File | null;
 
@@ -204,6 +208,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         candidateEmail,
         candidatePhone,
         resumeUrl,
+        coverLetter,
         introTranscript,
         matchScore: scoringResult ? scoringResult.score : null,
         matchedSkills: scoringResult ? scoringResult.matchedSkills : undefined,
@@ -212,6 +217,18 @@ export async function POST(request: Request, { params }: RouteParams) {
         status: scoringResult ? 'screened' : 'applied',
       },
     });
+
+    // 12. Send confirmation email to candidate
+    try {
+      await sendApplicationConfirmationEmail({
+        candidateEmail,
+        candidateName,
+        jobTitle: refreshedJob.title,
+        companyName: refreshedJob.company.name,
+      });
+    } catch (emailErr) {
+      console.error('[Application POST] Candidate email notification error:', emailErr);
+    }
 
     return NextResponse.json({
       success: true,

@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
         candidateEmail: app.candidateEmail,
         candidatePhone: app.candidatePhone,
         resumeUrl: app.resumeUrl,
+        coverLetter: app.coverLetter,
         introTranscript: app.introTranscript,
         status: app.status,
         matchScore: app.matchScore,

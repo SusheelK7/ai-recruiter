@@ -166,24 +166,32 @@ export async function GET(request: Request) {
       createdAt: job.createdAt.toISOString(),
     }));
 
-    // Upcoming / Scheduled Interviews list
-    const upcomingInterviews = applications.slice(0, 6).map((app) => {
-      let statusLabel = 'Scheduled';
-      if (app.status === 'hired') statusLabel = 'Completed';
-      else if (app.status === 'screened') statusLabel = 'Screening';
-      else if (app.interview?.status) statusLabel = app.interview.status;
+    // Upcoming / Scheduled Interviews list — only candidates selected for interview
+    const upcomingInterviews = applications
+      .filter((app) => app.status === 'interviewed' || app.interview !== null)
+      .sort((a, b) => {
+        // Sort by scheduled interview time (soonest first), fallback to createdAt
+        const timeA = a.interview?.scheduledTime?.getTime() ?? a.createdAt.getTime();
+        const timeB = b.interview?.scheduledTime?.getTime() ?? b.createdAt.getTime();
+        return timeB - timeA;
+      })
+      .slice(0, 6)
+      .map((app) => {
+        let statusLabel = 'Scheduled';
+        if (app.status === 'hired') statusLabel = 'Completed';
+        else if (app.interview?.status) statusLabel = app.interview.status;
 
-      return {
-        id: app.id,
-        candidateName: app.candidateName,
-        jobTitle: app.job.title,
-        scheduledTime: app.interview?.scheduledTime
-          ? app.interview.scheduledTime.toISOString()
-          : app.createdAt.toISOString(),
-        status: statusLabel,
-        matchScore: app.matchScore,
-      };
-    });
+        return {
+          id: app.id,
+          candidateName: app.candidateName,
+          jobTitle: app.job.title,
+          scheduledTime: app.interview?.scheduledTime
+            ? app.interview.scheduledTime.toISOString()
+            : null,
+          status: statusLabel,
+          matchScore: app.matchScore,
+        };
+      });
 
     const activeJobIds = new Set(jobs.filter((job) => job.status === 'active').map((job) => job.id));
 

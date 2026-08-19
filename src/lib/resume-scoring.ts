@@ -22,8 +22,8 @@ export function buildScoringPrompt(params: ScoreResumeParams): string {
   const skillsList = Array.isArray(requiredSkills)
     ? requiredSkills.join(', ')
     : typeof requiredSkills === 'string'
-    ? requiredSkills
-    : 'Not specified';
+      ? requiredSkills
+      : 'Not specified';
 
   return `You are an expert AI talent recruiter. Evaluate the following candidate's resume against the target job posting and determine their match score and skills alignment.
 

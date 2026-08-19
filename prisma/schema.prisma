@@ -60,6 +60,7 @@ model Application {
   candidateEmail  String
   candidatePhone  String?
   resumeUrl       String
+  coverLetter     String?
   matchScore      Int?
   matchedSkills   Json?
   missingSkills   Json?

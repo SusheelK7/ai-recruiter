@@ -6,13 +6,15 @@ interface ApplicationFormProps {
   publicUrl: string;
   jobTitle: string;
   companyName: string;
+  onClose?: () => void;
 }
 
-export function ApplicationForm({ publicUrl, jobTitle, companyName }: ApplicationFormProps) {
+export function ApplicationForm({ publicUrl, jobTitle, companyName, onClose }: ApplicationFormProps) {
   // Form fields
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
   const [candidatePhone, setCandidatePhone] = useState("");
+  const [coverLetter, setCoverLetter] = useState("");
 
   // Resume state
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -262,6 +264,9 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName }: Applicatio
       formData.append("candidateName", candidateName.trim());
       formData.append("candidateEmail", candidateEmail.trim());
       formData.append("candidatePhone", candidatePhone.trim());
+      if (coverLetter.trim()) {
+        formData.append("coverLetter", coverLetter.trim());
+      }
       formData.append("resume", resumeFile as Blob);
       formData.append("video", videoFile as Blob);
 
@@ -320,12 +325,28 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName }: Applicatio
   // Render Application Form
   // ---------------------------------------------------------------------------
   return (
-    <div className="dashboard-card rounded-2xl p-6 sm:p-8">
-      <div className="border-b border-[var(--border-color)] pb-4">
-        <h3 className="text-xl font-bold text-[var(--text-primary)]">Apply for Position</h3>
-        <p className="mt-1 text-xs text-[var(--text-muted)] sm:text-sm">
-          Complete candidate profile, attach your resume, and record a 60-second introduction.
-        </p>
+    <div className="rounded-2xl p-6 sm:p-8">
+      <div className="flex items-start justify-between border-b border-[var(--border-color)] pb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-xl font-bold text-[var(--text-primary)]">Apply for {jobTitle}</h3>
+          </div>
+          <p className="mt-1 text-xs text-[var(--text-muted)] sm:text-sm">
+            {companyName} • Complete your profile, attach your resume, and record a 60-second introduction.
+          </p>
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl p-2 text-[var(--text-muted)] hover:bg-[var(--bg-main)] hover:text-[var(--text-primary)] transition-colors"
+            title="Close form"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
@@ -378,7 +399,24 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName }: Applicatio
               placeholder="+1 (555) 000-0000"
               value={candidatePhone}
               onChange={(e) => setCandidatePhone(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] transition-all focus:border-[var(--brand-accent)] focus:outline-none sm:max-w-md"
+              className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] transition-all focus:border-[var(--brand-accent)] focus:outline-none"
+            />
+          </div>
+
+          {/* Cover Letter (Optional) */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                Cover Letter
+              </label>
+              <span className="text-xs text-[var(--text-muted)] font-normal">(Optional)</span>
+            </div>
+            <textarea
+              rows={4}
+              placeholder="Tell us why you are interested in this position and what makes you a great fit..."
+              value={coverLetter}
+              onChange={(e) => setCoverLetter(e.target.value)}
+              className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] transition-all focus:border-[var(--brand-accent)] focus:outline-none resize-y"
             />
           </div>
         </div>
