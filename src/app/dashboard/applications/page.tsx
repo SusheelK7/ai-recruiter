@@ -9,6 +9,7 @@ interface Application {
   candidateEmail: string;
   candidatePhone: string | null;
   resumeUrl: string;
+  videoUrl?: string | null;
   introTranscript: string | null;
   status: string;
   matchScore: number | null;
@@ -46,10 +47,8 @@ function MatchScoreBadge({ score }: { score: number | null }) {
   if (score === null || score === undefined) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
-        <svg className="h-3.5 w-3.5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        Scoring Pending
+        <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+        Not Analyzed
       </span>
     );
   }
@@ -116,6 +115,9 @@ function ApplicationsContent() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState<string | null>(null);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [analyzingType, setAnalyzingType] = useState<"all" | "resume" | "video" | null>(null);
+  const [activeVideoModal, setActiveVideoModal] = useState<{ applicationId: string; candidateName: string } | null>(null);
 
   // Sync filterJob if URL param changes
   useEffect(() => {
@@ -163,6 +165,34 @@ function ApplicationsContent() {
     }
   };
 
+  const handleAnalyze = async (applicationId: string, type: "all" | "resume" | "video" = "all") => {
+    setAnalyzingId(applicationId);
+    setAnalyzingType(type);
+    try {
+      const res = await fetch(`/api/applications/${applicationId}/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to complete AI analysis.");
+      }
+
+      // Update state with newly scored data
+      setApplications((prev) =>
+        prev.map((app) => (app.id === applicationId ? { ...app, ...data.application } : app))
+      );
+      setExpandedId(applicationId);
+    } catch (err: any) {
+      alert(err.message || "AI Analysis failed. Please check your Gemini API key.");
+    } finally {
+      setAnalyzingId(null);
+      setAnalyzingType(null);
+    }
+  };
+
   // Derived: unique jobs for filter dropdown
   const uniqueJobs = useMemo(() => {
     return Array.from(new Map(applications.map((a) => [a.job.id, a.job])).values());
@@ -185,7 +215,7 @@ function ApplicationsContent() {
     const result = applications.filter((app) => {
       const matchJob = filterJob === "all" || app.job.id === filterJob;
       const matchStatus = filterStatus === "all" || app.status === filterStatus;
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
       const matchSearch =
         !q ||
         app.candidateName.toLowerCase().includes(q) ||
@@ -241,7 +271,7 @@ function ApplicationsContent() {
             )}
           </div>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            AI-screened candidates ranked by match score, extracted skills, and evaluation breakdown.
+            Instant candidate submissions with on-demand AI resume evaluation and video transcription.
           </p>
         </div>
 
@@ -250,6 +280,10 @@ function ApplicationsContent() {
           <div className="flex items-center gap-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-1.5 shadow-sm">
             <span className="text-xs font-medium text-[var(--text-muted)]">Total:</span>
             <span className="text-xs font-bold text-[var(--text-primary)]">{applications.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50/50 px-3 py-1.5 shadow-sm dark:border-purple-900/40 dark:bg-purple-950/20">
+            <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Screened:</span>
+            <span className="text-xs font-bold text-purple-700 dark:text-purple-300">{scoredCount}/{applications.length}</span>
           </div>
           {avgScore !== null && (
             <div className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/50 px-3 py-1.5 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/20">
@@ -360,7 +394,7 @@ function ApplicationsContent() {
           </h3>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
             {applications.length === 0
-              ? "Candidates will appear here ranked by AI match score once they apply."
+              ? "Candidates will appear here as soon as they submit their application."
               : "Try adjusting your search query, job selection, or status filters."}
           </p>
         </div>
@@ -372,6 +406,7 @@ function ApplicationsContent() {
           {filtered.map((app, index) => {
             const isExpanded = expandedId === app.id;
             const isShowingTranscript = showTranscript === app.id;
+            const isAnalyzingThis = analyzingId === app.id;
             const matchedList = Array.isArray(app.matchedSkills) ? app.matchedSkills : [];
             const missingList = Array.isArray(app.missingSkills) ? app.missingSkills : [];
 
@@ -415,7 +450,37 @@ function ApplicationsContent() {
 
                   {/* Right: Score Badge & Actions */}
                   <div className="flex shrink-0 items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0">
-                    <MatchScoreBadge score={app.matchScore} />
+                    {/* Instant Action: Quick Analyze Button if not analyzed */}
+                    {app.matchScore === null ? (
+                      <button
+                        type="button"
+                        disabled={isAnalyzingThis}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAnalyze(app.id, "all");
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50"
+                      >
+                        {isAnalyzingThis ? (
+                          <>
+                            <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                            </svg>
+                            <span>Analyzing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="h-3.5 w-3.5 text-amber-300" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                            </svg>
+                            <span>Analyze with AI</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <MatchScoreBadge score={app.matchScore} />
+                    )}
 
                     <svg
                       className={`h-5 w-5 text-[var(--text-muted)] transition-transform duration-200 ${
@@ -431,50 +496,70 @@ function ApplicationsContent() {
                   </div>
                 </div>
 
-                {/* Quick Skills Preview (Collapsed view highlights) */}
-                {(matchedList.length > 0 || missingList.length > 0 || app.aiReasoning) && !isExpanded && (
-                  <div className="border-t border-[var(--border-color)]/60 bg-[var(--bg-main)]/20 px-4 py-2.5 sm:px-5">
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      {matchedList.slice(0, 3).map((skill, i) => (
-                        <span
-                          key={i}
-                          className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                        >
-                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                          {skill}
-                        </span>
-                      ))}
-                      {matchedList.length > 3 && (
-                        <span className="text-[var(--text-muted)]">+{matchedList.length - 3} more</span>
-                      )}
-                      {app.aiReasoning && (
-                        <span className="ml-auto hidden text-[var(--text-muted)] truncate max-w-md md:inline-block italic">
-                          "{app.aiReasoning}"
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {/* Expanded Detailed Breakdown */}
                 {isExpanded && (
                   <div className="animate-fade-slide border-t border-[var(--border-color)] bg-[var(--bg-main)]/40 p-4 sm:p-6 space-y-6">
                     {/* AI Scoring Summary Callout */}
                     <div className="rounded-xl border border-[var(--brand-accent)]/30 bg-[var(--brand-accent)]/5 p-4">
-                      <div className="flex items-center gap-2">
-                        <svg className="h-5 w-5 text-[var(--brand-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        <h4 className="text-sm font-bold text-[var(--text-primary)]">
-                          AI Screening Evaluation ({app.matchScore !== null ? `${app.matchScore}/100 Match Score` : "Pending"})
-                        </h4>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <svg className="h-5 w-5 text-[var(--brand-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                            AI Screening Evaluation ({app.matchScore !== null ? `${app.matchScore}/100 Match Score` : "Pending Analysis"})
+                          </h4>
+                        </div>
+
+                        {/* On-Demand Analysis Action Buttons */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={isAnalyzingThis}
+                            onClick={() => handleAnalyze(app.id, "all")}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-accent)] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
+                          >
+                            {isAnalyzingThis && analyzingType === "all" ? (
+                              <>
+                                <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                </svg>
+                                <span>Running AI...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>⚡ {app.matchScore === null ? "Analyze Candidate" : "Re-Analyze (All)"}</span>
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isAnalyzingThis}
+                            onClick={() => handleAnalyze(app.id, "resume")}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-main)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--brand-accent)] disabled:opacity-50"
+                          >
+                            {isAnalyzingThis && analyzingType === "resume" ? "Analyzing..." : "📄 Score Resume"}
+                          </button>
+
+                          {app.videoUrl && (
+                            <button
+                              type="button"
+                              disabled={isAnalyzingThis}
+                              onClick={() => handleAnalyze(app.id, "video")}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-main)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-violet-400 disabled:opacity-50"
+                            >
+                              {isAnalyzingThis && analyzingType === "video" ? "Transcribing..." : "🎥 Transcribe Video"}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]/90">
+
+                      <p className="mt-3 text-sm leading-relaxed text-[var(--text-primary)]/90">
                         {app.aiReasoning ||
                           (app.matchScore === null
-                            ? "Scoring is currently pending or the AI evaluation service was temporarily unavailable during submission."
+                            ? "Candidate application was received instantly without delay. Click 'Analyze Candidate' above to generate an AI match score, extracted skills, and video transcript with Google Gemini."
                             : "Candidate match evaluated against target job requirements.")}
                       </p>
                     </div>
@@ -503,7 +588,9 @@ function ApplicationsContent() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs italic text-[var(--text-muted)]">No explicit matched skills extracted.</p>
+                          <p className="text-xs italic text-[var(--text-muted)]">
+                            {app.matchScore === null ? "Analyze candidate to extract matched skills." : "No explicit matched skills extracted."}
+                          </p>
                         )}
                       </div>
 
@@ -529,17 +616,19 @@ function ApplicationsContent() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs italic text-[var(--text-muted)]">No critical missing skills flagged.</p>
+                          <p className="text-xs italic text-[var(--text-muted)]">
+                            {app.matchScore === null ? "Analyze candidate to identify missing skill gaps." : "No critical missing skills flagged."}
+                          </p>
                         )}
                       </div>
                     </div>
 
                     {/* Candidate Actions & Assets */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-2">
-                      {/* Left: Resume & Assets */}
+                      {/* Left: Resume & Video Assets */}
                       <div className="space-y-3">
                         <h5 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                          Candidate Documents & Media
+                          Candidate Documents & Video
                         </h5>
                         <div className="flex flex-wrap gap-2">
                           <a
@@ -554,6 +643,22 @@ function ApplicationsContent() {
                             </svg>
                             Download Resume
                           </a>
+
+                          {app.videoUrl && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveVideoModal({ applicationId: app.id, candidateName: app.candidateName });
+                              }}
+                              className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-2 text-xs font-semibold text-indigo-700 transition-all hover:bg-indigo-100 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
+                            >
+                              <svg className="h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                              </svg>
+                              Watch Video Intro
+                            </button>
+                          )}
 
                           <button
                             type="button"
@@ -602,13 +707,26 @@ function ApplicationsContent() {
                     {/* Video Transcript Drawer */}
                     {isShowingTranscript && (
                       <div className="rounded-xl border border-violet-200/80 bg-violet-50/60 p-4 dark:border-violet-900/40 dark:bg-violet-950/20">
-                        <div className="mb-2 flex items-center gap-2">
-                          <svg className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                          </svg>
-                          <h5 className="text-xs font-bold text-violet-700 dark:text-violet-300">
-                            Candidate Video Introduction Transcript
-                          </h5>
+                        <div className="mb-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <svg className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                            </svg>
+                            <h5 className="text-xs font-bold text-violet-700 dark:text-violet-300">
+                              Candidate Video Introduction Transcript
+                            </h5>
+                          </div>
+
+                          {!app.introTranscript && app.videoUrl && (
+                            <button
+                              type="button"
+                              disabled={isAnalyzingThis}
+                              onClick={() => handleAnalyze(app.id, "video")}
+                              className="text-xs font-semibold text-violet-700 underline hover:no-underline dark:text-violet-300"
+                            >
+                              {isAnalyzingThis ? "Transcribing..." : "Transcribe Now with Gemini"}
+                            </button>
+                          )}
                         </div>
                         {app.introTranscript ? (
                           <p className="whitespace-pre-wrap text-sm leading-relaxed text-violet-900 dark:text-violet-200">
@@ -616,7 +734,7 @@ function ApplicationsContent() {
                           </p>
                         ) : (
                           <p className="text-sm italic text-violet-600/70 dark:text-violet-400/70">
-                            No transcript available.
+                            No transcript generated yet. Click 'Transcribe Now' or 'Analyze Candidate' to transcribe candidate's video with Gemini.
                           </p>
                         )}
                       </div>
@@ -626,6 +744,54 @@ function ApplicationsContent() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Video Playback Modal */}
+      {activeVideoModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in"
+          onClick={() => setActiveVideoModal(null)}
+        >
+          <div
+            className="w-full max-w-2xl overflow-hidden rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] px-5 py-4">
+              <h3 className="text-base font-bold text-[var(--text-primary)]">
+                Video Introduction: {activeVideoModal.candidateName}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setActiveVideoModal(null)}
+                className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-main)] hover:text-[var(--text-primary)]"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="bg-black p-4 flex items-center justify-center min-h-[300px]">
+              <video
+                src={`/api/applications/${activeVideoModal.applicationId}/video`}
+                controls
+                autoPlay
+                playsInline
+                className="max-h-[60vh] w-full rounded-xl"
+              />
+            </div>
+
+            <div className="flex justify-end p-4 border-t border-[var(--border-color)] bg-[var(--bg-main)]/30">
+              <button
+                type="button"
+                onClick={() => setActiveVideoModal(null)}
+                className="rounded-xl border border-[var(--border-color)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-main)]"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

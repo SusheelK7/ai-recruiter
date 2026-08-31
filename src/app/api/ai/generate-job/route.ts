@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { getGeminiErrorMessage, getGeminiModel } from '@/lib/gemini';
-import {
-  buildJobGenerationPrompt,
-  parseGeneratedJobContent,
-} from '@/lib/job-description';
+import { buildJobGenerationPrompt, parseGeneratedJobContent } from '@/lib/job-description';
 import { prisma } from '@/lib/prisma';
 import { generateJobSchema } from '@/lib/validations/job';
 

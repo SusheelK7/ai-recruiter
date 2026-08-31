@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { expireStaleJobs } from '@/lib/jobs';
-import { uploadResumeToR2 } from '@/lib/r2';
-import { transcribeVideoWithGemini } from '@/lib/transcribe';
+import { uploadResumeToR2, uploadVideoToR2 } from '@/lib/r2';
 import {
   extractTextFromResume,
   validateResumeText,
 } from '@/lib/resume-parser';
-import { scoreResumeWithGemini } from '@/lib/resume-scoring';
 import { sendApplicationConfirmationEmail } from '@/lib/email';
 import { z } from 'zod';
 
@@ -142,7 +140,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const resumeBuffer = Buffer.from(await resumeFile.arrayBuffer());
     const videoBuffer = Buffer.from(await videoFile.arrayBuffer());
 
-    // 7. Resume Text Extraction & Server-side Content Validation BEFORE any AI Call
+    // 7. Resume Text Extraction & Server-side Content Validation
     let extractedResumeText = '';
     try {
       extractedResumeText = await extractTextFromResume(
@@ -174,33 +172,21 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    // 8. Upload Resume to Cloudflare R2
-    const resumeUrl = await uploadResumeToR2(
-      resumeBuffer,
-      resumeFile.name,
-      resumeFile.type || 'application/pdf'
-    );
+    // 8. Upload Resume & Video to Cloudflare R2 in parallel for maximum speed
+    const [resumeUrl, videoUrl] = await Promise.all([
+      uploadResumeToR2(
+        resumeBuffer,
+        resumeFile.name,
+        resumeFile.type || 'application/pdf'
+      ),
+      uploadVideoToR2(
+        videoBuffer,
+        videoFile.name || `intro-${Date.now()}.webm`,
+        videoFile.type || 'video/webm'
+      ),
+    ]);
 
-    // 9. Send Video DIRECTLY to Gemini API for in-memory transcription (never stored)
-    const introTranscript = await transcribeVideoWithGemini(
-      videoBuffer,
-      videoFile.type || 'video/webm'
-    );
-
-    // 10. AI Resume Screening & Scoring with Gemini (only runs on valid resumes)
-    let scoringResult = null;
-    try {
-      scoringResult = await scoreResumeWithGemini({
-        resumeText: extractedResumeText,
-        jobTitle: refreshedJob.title,
-        jobDescription: refreshedJob.description,
-        requiredSkills: (refreshedJob.requiredSkills as string[]) || [],
-      });
-    } catch (scoringError) {
-      console.error('AI resume scoring encountered error, proceeding with pending status:', scoringError);
-    }
-
-    // 11. Save Application to Database
+    // 9. Save Application immediately to Database (Status: 'applied')
     const application = await prisma.application.create({
       data: {
         jobId: refreshedJob.id,
@@ -208,36 +194,26 @@ export async function POST(request: Request, { params }: RouteParams) {
         candidateEmail,
         candidatePhone,
         resumeUrl,
+        videoUrl,
         coverLetter,
-        introTranscript,
-        matchScore: scoringResult ? scoringResult.score : null,
-        matchedSkills: scoringResult ? scoringResult.matchedSkills : undefined,
-        missingSkills: scoringResult ? scoringResult.missingSkills : undefined,
-        aiReasoning: scoringResult ? scoringResult.reasoning : null,
-        status: scoringResult ? 'screened' : 'applied',
+        status: 'applied',
       },
     });
 
-    // 12. Send confirmation email to candidate
-    try {
-      await sendApplicationConfirmationEmail({
-        candidateEmail,
-        candidateName,
-        jobTitle: refreshedJob.title,
-        companyName: refreshedJob.company.name,
-      });
-    } catch (emailErr) {
+    // 10. Send confirmation email to candidate asynchronously in background (non-blocking)
+    sendApplicationConfirmationEmail({
+      candidateEmail,
+      candidateName,
+      jobTitle: refreshedJob.title,
+      companyName: refreshedJob.company.name,
+    }).catch((emailErr) => {
       console.error('[Application POST] Candidate email notification error:', emailErr);
-    }
+    });
 
     return NextResponse.json({
       success: true,
       message: 'Application submitted successfully!',
       applicationId: application.id,
-      matchScore: application.matchScore,
-      matchedSkills: application.matchedSkills,
-      missingSkills: application.missingSkills,
-      aiReasoning: application.aiReasoning,
       status: application.status,
     });
   } catch (error: any) {
@@ -251,3 +227,4 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
   }
 }
+

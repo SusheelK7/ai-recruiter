@@ -257,7 +257,7 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName, onClose }: A
 
     setIsSubmitting(true);
     setSubmitError(null);
-    setSubmissionProgress("Preparing application data...");
+    setSubmissionProgress("Submitting application...");
 
     try {
       const formData = new FormData();
@@ -270,7 +270,7 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName, onClose }: A
       formData.append("resume", resumeFile as Blob);
       formData.append("video", videoFile as Blob);
 
-      setSubmissionProgress("Uploading resume to R2 & generating video transcript...");
+      setSubmissionProgress("Uploading files & finalizing submission...");
 
       const response = await fetch(`/api/jobs/${publicUrl}/apply`, {
         method: "POST",
