@@ -30,10 +30,18 @@ export async function GET(request: NextRequest) {
       where: {
         jobId: { in: jobIds },
         ...(jobId ? { jobId } : {}),
-        ...(status ? { status } : {}),
+        ...(status ? { status } : { status: { not: 'test_pending' } }),
       },
       include: {
         job: { select: { id: true, title: true, publicUrl: true } },
+        candidateTest: {
+          select: {
+            id: true,
+            durationMinutes: true,
+            startedAt: true,
+            submittedAt: true,
+          },
+        },
       },
     });
 
@@ -74,6 +82,8 @@ export async function GET(request: NextRequest) {
         videoUrl: app.videoUrl,
         coverLetter: app.coverLetter,
         introTranscript: app.introTranscript,
+        testScore: app.testScore,
+        violationLog: app.violationLog,
         status: app.status,
         matchScore: app.matchScore,
         matchedSkills: app.matchedSkills,
@@ -81,6 +91,7 @@ export async function GET(request: NextRequest) {
         aiReasoning: app.aiReasoning,
         createdAt: app.createdAt.toISOString(),
         job: app.job,
+        candidateTest: app.candidateTest,
       })),
     });
   } catch (error) {
@@ -100,7 +111,7 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const { applicationId, status } = body;
 
-    const validStatuses = ['applied', 'screened', 'tested', 'interviewed', 'hired', 'rejected'];
+    const validStatuses = ['test_pending', 'applied', 'screened', 'tested', 'interviewed', 'hired', 'rejected'];
     if (!applicationId || !status || !validStatuses.includes(status)) {
       return NextResponse.json({ error: 'Invalid applicationId or status' }, { status: 400 });
     }

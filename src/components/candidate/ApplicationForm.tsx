@@ -6,10 +6,11 @@ interface ApplicationFormProps {
   publicUrl: string;
   jobTitle: string;
   companyName: string;
+  onNext?: (applicationId: string, candidateData: { candidateName: string; candidateEmail: string }) => void;
   onClose?: () => void;
 }
 
-export function ApplicationForm({ publicUrl, jobTitle, companyName, onClose }: ApplicationFormProps) {
+export function ApplicationForm({ publicUrl, jobTitle, companyName, onNext, onClose }: ApplicationFormProps) {
   // Form fields
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
@@ -283,7 +284,14 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName, onClose }: A
         throw new Error(data.error || "Application submission failed.");
       }
 
-      setIsSubmitted(true);
+      if (onNext && data.applicationId) {
+        onNext(data.applicationId, {
+          candidateName: candidateName.trim(),
+          candidateEmail: candidateEmail.trim(),
+        });
+      } else {
+        setIsSubmitted(true);
+      }
     } catch (err: any) {
       console.error("Submission failed:", err);
       setSubmitError(err.message || "Failed to submit application. Please try again.");
@@ -674,12 +682,22 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName, onClose }: A
           <button
             type="submit"
             disabled={!isFormValid || isSubmitting}
-            className="w-full rounded-xl bg-[var(--brand-accent)] py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-[var(--brand-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-xl bg-[var(--brand-accent)] py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-[var(--brand-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {isSubmitting ? "Submitting Application..." : "Submit Application"}
+            {isSubmitting ? (
+              <span>Saving Profile & Files...</span>
+            ) : (
+              <>
+                <span>Next: Assessment Rules</span>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </>
+            )}
           </button>
         </div>
       </form>
     </div>
   );
 }
+

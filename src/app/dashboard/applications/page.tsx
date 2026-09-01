@@ -11,6 +11,8 @@ interface Application {
   resumeUrl: string;
   videoUrl?: string | null;
   introTranscript: string | null;
+  testScore?: number | null;
+  violationLog?: Array<{ type: string; timestamp: string; details?: string }> | null;
   status: string;
   matchScore: number | null;
   matchedSkills: string[] | null;
@@ -23,6 +25,7 @@ interface Application {
 const STATUS_OPTIONS = ["applied", "screened", "tested", "interviewed", "hired", "rejected"];
 
 const STATUS_STYLES: Record<string, string> = {
+  test_pending: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700",
   applied: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/50",
   screened: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 dark:border-purple-800/50",
   tested: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 border-orange-200 dark:border-orange-800/50",
@@ -38,7 +41,41 @@ function StatusBadge({ status }: { status: string }) {
         STATUS_STYLES[status] ?? STATUS_STYLES.applied
       }`}
     >
-      {status}
+      {status === "test_pending" ? "Assessment Pending" : status}
+    </span>
+  );
+}
+
+function TestScoreBadge({ score, violations }: { score: number | null | undefined; violations?: any[] | null }) {
+  const hasViolations = Array.isArray(violations) && violations.length > 0;
+
+  if (score === null || score === undefined) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300">
+        Test: Pending
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-bold ${
+        score >= 75
+          ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+          : score >= 50
+          ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
+          : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-300"
+      }`}
+    >
+      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      {score}% Test
+      {hasViolations && (
+        <span className="ml-0.5 rounded-full bg-rose-600 px-1.5 py-0.2 text-[10px] text-white" title={`${violations.length} security violation(s) recorded`}>
+          ⚠️ {violations.length}
+        </span>
+      )}
     </span>
   );
 }
@@ -450,6 +487,9 @@ function ApplicationsContent() {
 
                   {/* Right: Score Badge & Actions */}
                   <div className="flex shrink-0 items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0">
+                    {/* Technical Test Score Badge */}
+                    <TestScoreBadge score={app.testScore} violations={app.violationLog} />
+
                     {/* Instant Action: Quick Analyze Button if not analyzed */}
                     {app.matchScore === null ? (
                       <button
@@ -621,6 +661,48 @@ function ApplicationsContent() {
                           </p>
                         )}
                       </div>
+                    </div>
+
+                    {/* Technical Screening Assessment & Proctoring Summary */}
+                    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)]/60 p-4 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <svg className="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <h5 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                            AI-Personalized Technical Assessment
+                          </h5>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-[var(--text-primary)]">
+                            Score: {app.testScore !== null && app.testScore !== undefined ? `${app.testScore}/100` : "Pending"}
+                          </span>
+                          {Array.isArray(app.violationLog) && app.violationLog.length > 0 ? (
+                            <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                              ⚠️ {app.violationLog.length} Security Incident(s) Logged
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                              ✓ Proctored Clean
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {Array.isArray(app.violationLog) && app.violationLog.length > 0 && (
+                        <div className="rounded-lg border border-rose-200/80 bg-rose-50/50 p-2.5 text-xs text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200 space-y-1">
+                          <p className="font-semibold">Security Violations Recorded:</p>
+                          <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
+                            {app.violationLog.map((v, i) => (
+                              <li key={i}>
+                                <strong>{v.type}:</strong> {v.details || "Tab switched or window lost focus"} ({new Date(v.timestamp).toLocaleTimeString()})
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
 
                     {/* Candidate Actions & Assets */}

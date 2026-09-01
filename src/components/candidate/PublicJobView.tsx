@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ApplicationForm } from "@/components/candidate/ApplicationForm";
+import { TestDisclaimer } from "@/components/candidate/TestDisclaimer";
+import { SecureTest } from "@/components/candidate/SecureTest";
+import { TestComplete } from "@/components/candidate/TestComplete";
 
 interface JobData {
   id: string;
@@ -22,17 +25,28 @@ interface PublicJobViewProps {
   job: JobData;
 }
 
-export function PublicJobView({ job }: PublicJobViewProps) {
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+type FlowStep = "job" | "form" | "disclaimer" | "test" | "complete";
 
-  // Close drawer on Escape key
+export function PublicJobView({ job }: PublicJobViewProps) {
+  const [step, setStep] = useState<FlowStep>("job");
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [candidateData, setCandidateData] = useState<{
+    candidateName: string;
+    candidateEmail: string;
+  }>({
+    candidateName: "",
+    candidateEmail: "",
+  });
+
+  // Close drawer / escape behavior
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsDrawerOpen(false);
+      // Don't allow closing with escape during active test to prevent accidental abandon
+      if (e.key === "Escape" && (step === "form" || step === "disclaimer")) {
+        setStep("job");
       }
     };
-    if (isDrawerOpen) {
+    if (step !== "job") {
       window.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
     }
@@ -40,7 +54,24 @@ export function PublicJobView({ job }: PublicJobViewProps) {
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "unset";
     };
-  }, [isDrawerOpen]);
+  }, [step]);
+
+  const handleFormNext = (
+    appId: string,
+    data: { candidateName: string; candidateEmail: string }
+  ) => {
+    setApplicationId(appId);
+    setCandidateData(data);
+    setStep("disclaimer");
+  };
+
+  const handleStartTest = () => {
+    setStep("test");
+  };
+
+  const handleTestComplete = () => {
+    setStep("complete");
+  };
 
   return (
     <div className="min-h-screen bg-[var(--bg-main)] px-4 py-10 sm:px-6">
@@ -121,7 +152,7 @@ export function PublicJobView({ job }: PublicJobViewProps) {
               <div className="shrink-0 pt-1 sm:pt-0">
                 <button
                   type="button"
-                  onClick={() => setIsDrawerOpen(true)}
+                  onClick={() => setStep("form")}
                   className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-accent)] px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-[var(--brand-accent-hover)] hover:shadow-xl active:scale-95"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -165,11 +196,11 @@ export function PublicJobView({ job }: PublicJobViewProps) {
             <div className="mt-8 rounded-2xl border border-[var(--brand-accent)]/30 bg-[var(--brand-accent)]/5 p-6 text-center">
               <h3 className="text-base font-bold text-[var(--text-primary)]">Ready to Join {job.company.name}?</h3>
               <p className="mt-1 text-xs text-[var(--text-muted)] max-w-md mx-auto">
-                Submit your profile, attach your resume, and introduce yourself with a short video intro.
+                Submit your profile, attach your resume, and complete a short assessment to finalize your application.
               </p>
               <button
                 type="button"
-                onClick={() => setIsDrawerOpen(true)}
+                onClick={() => setStep("form")}
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[var(--brand-accent)] px-6 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:bg-[var(--brand-accent-hover)] active:scale-95"
               >
                 Apply for this Position
@@ -180,25 +211,119 @@ export function PublicJobView({ job }: PublicJobViewProps) {
       </div>
 
       {/* --------------------------------------------------------------------- */}
-      {/* Slide-Over Application Drawer from the Right Side */}
+      {/* Multi-Step Modal / Slide-Over Drawer */}
       {/* --------------------------------------------------------------------- */}
-      {isDrawerOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+      {step !== "job" && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
           {/* Backdrop Overlay */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
-            onClick={() => setIsDrawerOpen(false)}
+            className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity animate-fade-in"
+            onClick={() => {
+              if (step === "form" || step === "disclaimer") {
+                setStep("job");
+              }
+            }}
           />
 
-          {/* Right Slide-Over Panel */}
-          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-            <div className="w-screen max-w-2xl bg-[var(--bg-card)] shadow-2xl overflow-y-auto border-l border-[var(--border-color)] animate-slide-in-right">
-              <ApplicationForm
-                publicUrl={job.publicUrl}
-                jobTitle={job.title}
-                companyName={job.company.name}
-                onClose={() => setIsDrawerOpen(false)}
-              />
+          {/* Centered Modal / Full Flow Container */}
+          <div className="relative min-h-screen flex items-center justify-center p-3 sm:p-6">
+            <div className="relative w-full max-w-3xl rounded-3xl bg-[var(--bg-card)] shadow-2xl border border-[var(--border-color)] overflow-hidden animate-fade-in my-8">
+              {/* Step Flow Progress Bar */}
+              <div className="border-b border-[var(--border-color)] bg-[var(--bg-main)]/50 px-6 py-3">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                        step === "form"
+                          ? "bg-[var(--brand-accent)] text-white"
+                          : "bg-emerald-500 text-white"
+                      }`}
+                    >
+                      {step === "form" ? "1" : "✓"}
+                    </span>
+                    <span className={step === "form" ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
+                      1. Profile & Video
+                    </span>
+                  </div>
+
+                  <span className="text-[var(--border-color)]">→</span>
+
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                        step === "disclaimer"
+                          ? "bg-[var(--brand-accent)] text-white"
+                          : step === "test" || step === "complete"
+                          ? "bg-emerald-500 text-white"
+                          : "bg-[var(--border-color)] text-[var(--text-muted)]"
+                      }`}
+                    >
+                      {step === "test" || step === "complete" ? "✓" : "2"}
+                    </span>
+                    <span className={step === "disclaimer" ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
+                      2. Assessment Rules
+                    </span>
+                  </div>
+
+                  <span className="text-[var(--border-color)]">→</span>
+
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                        step === "test"
+                          ? "bg-[var(--brand-accent)] text-white"
+                          : step === "complete"
+                          ? "bg-emerald-500 text-white"
+                          : "bg-[var(--border-color)] text-[var(--text-muted)]"
+                      }`}
+                    >
+                      {step === "complete" ? "✓" : "3"}
+                    </span>
+                    <span className={step === "test" || step === "complete" ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
+                      3. Technical Test
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step Content */}
+              {step === "form" && (
+                <ApplicationForm
+                  publicUrl={job.publicUrl}
+                  jobTitle={job.title}
+                  companyName={job.company.name}
+                  onNext={handleFormNext}
+                  onClose={() => setStep("job")}
+                />
+              )}
+
+              {step === "disclaimer" && (
+                <TestDisclaimer
+                  jobTitle={job.title}
+                  companyName={job.company.name}
+                  candidateName={candidateData.candidateName || "Candidate"}
+                  onStartTest={handleStartTest}
+                  onCancel={() => setStep("job")}
+                />
+              )}
+
+              {step === "test" && applicationId && (
+                <SecureTest
+                  applicationId={applicationId}
+                  jobTitle={job.title}
+                  companyName={job.company.name}
+                  onComplete={handleTestComplete}
+                />
+              )}
+
+              {step === "complete" && (
+                <TestComplete
+                  jobTitle={job.title}
+                  companyName={job.company.name}
+                  candidateName={candidateData.candidateName || "Candidate"}
+                  candidateEmail={candidateData.candidateEmail || "your email"}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -206,3 +331,4 @@ export function PublicJobView({ job }: PublicJobViewProps) {
     </div>
   );
 }
+

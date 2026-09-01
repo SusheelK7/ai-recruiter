@@ -186,7 +186,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       ),
     ]);
 
-    // 9. Save Application immediately to Database (Status: 'applied')
+    // 9. Save Application in pending state (Status: 'test_pending')
     const application = await prisma.application.create({
       data: {
         jobId: refreshedJob.id,
@@ -196,23 +196,13 @@ export async function POST(request: Request, { params }: RouteParams) {
         resumeUrl,
         videoUrl,
         coverLetter,
-        status: 'applied',
+        status: 'test_pending',
       },
-    });
-
-    // 10. Send confirmation email to candidate asynchronously in background (non-blocking)
-    sendApplicationConfirmationEmail({
-      candidateEmail,
-      candidateName,
-      jobTitle: refreshedJob.title,
-      companyName: refreshedJob.company.name,
-    }).catch((emailErr) => {
-      console.error('[Application POST] Candidate email notification error:', emailErr);
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Application submitted successfully!',
+      message: 'Application details saved. Proceed to the test instructions.',
       applicationId: application.id,
       status: application.status,
     });
