@@ -73,6 +73,7 @@ model Application {
   candidateTest   CandidateTest?
   testResult      TestResult?
   interview       Interview?
+  activityLogs    ActivityLog[]
   createdAt       DateTime       @default(now())
 }
 
@@ -127,3 +128,13 @@ model Subscription {
   stripeCustomerId String?
   renewsAt         DateTime?
 }
+
+model ActivityLog {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  previousStage String
+  newStage      String
+  performedBy   String
+  createdAt     DateTime    @default(now())
+}

@@ -2,6 +2,7 @@
 
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { ToastContainer, useToast } from "@/components/ui/Toast";
 
 interface Application {
   id: string;
@@ -156,6 +157,9 @@ function ApplicationsContent() {
   const [analyzingType, setAnalyzingType] = useState<"all" | "resume" | "video" | null>(null);
   const [activeVideoModal, setActiveVideoModal] = useState<{ applicationId: string; candidateName: string } | null>(null);
 
+  const { toasts, addToast, dismissToast } = useToast();
+  const [updatingStage, setUpdatingStage] = useState<{ applicationId: string; stage: string } | null>(null);
+
   // Sync filterJob if URL param changes
   useEffect(() => {
     const paramJobId = searchParams.get("jobId");
@@ -184,21 +188,47 @@ function ApplicationsContent() {
   }, [fetchApplications]);
 
   const updateStatus = async (applicationId: string, newStatus: string) => {
+    const currentApp = applications.find((a) => a.id === applicationId);
+    if (currentApp?.status === newStatus) {
+      return; // No-op for re-clicks on same stage
+    }
+
     setUpdatingId(applicationId);
+    setUpdatingStage({ applicationId, stage: newStatus });
     try {
-      const res = await fetch("/api/applications", {
+      const res = await fetch(`/api/applications/${applicationId}/stage`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationId, status: newStatus }),
+        body: JSON.stringify({ stage: newStatus }),
       });
-      if (!res.ok) throw new Error("Failed to update status");
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update pipeline stage");
+      }
+
+      // Update local state
       setApplications((prev) =>
         prev.map((app) => (app.id === applicationId ? { ...app, status: newStatus } : app))
       );
-    } catch {
-      alert("Failed to update status. Please try again.");
+
+      const capitalizedStage = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+
+      if (data.emailWarning) {
+        // Stage updated in DB, but email failed/missing
+        addToast(data.emailWarning, "warning");
+      } else if (data.emailSent) {
+        addToast(`Candidate moved to ${capitalizedStage} — notification email sent`, "success");
+      } else {
+        // E.g., applied or screened (internal stage / no email configured)
+        addToast(`Candidate moved to ${capitalizedStage}`, "success");
+      }
+    } catch (err: any) {
+      addToast(err.message || "Failed to update pipeline stage. Please try again.", "error");
     } finally {
       setUpdatingId(null);
+      setUpdatingStage(null);
     }
   };
 
@@ -222,8 +252,9 @@ function ApplicationsContent() {
         prev.map((app) => (app.id === applicationId ? { ...app, ...data.application } : app))
       );
       setExpandedId(applicationId);
+      addToast("AI Screening Analysis completed successfully.", "success");
     } catch (err: any) {
-      alert(err.message || "AI Analysis failed. Please check your Gemini API key.");
+      addToast(err.message || "AI Analysis failed. Please check your Gemini API key.", "error");
     } finally {
       setAnalyzingId(null);
       setAnalyzingType(null);
@@ -294,6 +325,9 @@ function ApplicationsContent() {
 
   return (
     <div className="px-3 py-4 sm:px-5 sm:py-6 lg:px-8">
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
       {/* Page Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -764,24 +798,40 @@ function ApplicationsContent() {
                           Update Pipeline Stage
                         </h5>
                         <div className="flex flex-wrap gap-2">
-                          {STATUS_OPTIONS.map((s) => (
-                            <button
-                              key={s}
-                              type="button"
-                              disabled={updatingId === app.id || app.status === s}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateStatus(app.id, s);
-                              }}
-                              className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all disabled:opacity-50 ${
-                                app.status === s
-                                  ? `${STATUS_STYLES[s]} ring-2 ring-offset-1 ring-current`
-                                  : "border border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--brand-accent)] hover:text-[var(--brand-accent)]"
-                              }`}
-                            >
-                              {updatingId === app.id && app.status !== s ? "…" : s}
-                            </button>
-                          ))}
+                          {STATUS_OPTIONS.map((s) => {
+                            const isCurrent = app.status === s;
+                            const isUpdatingThis = updatingStage?.applicationId === app.id && updatingStage?.stage === s;
+                            const isUpdatingAny = updatingId === app.id;
+
+                            return (
+                              <button
+                                key={s}
+                                type="button"
+                                disabled={isUpdatingAny || isCurrent}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateStatus(app.id, s);
+                                }}
+                                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all ${
+                                  isCurrent
+                                    ? `${STATUS_STYLES[s]} ring-2 ring-offset-1 ring-current cursor-default`
+                                    : "border border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--brand-accent)] hover:text-[var(--brand-accent)] active:scale-95 disabled:cursor-not-allowed"
+                                } ${isUpdatingAny && !isUpdatingThis ? "opacity-40" : ""}`}
+                              >
+                                {isUpdatingThis ? (
+                                  <>
+                                    <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                    </svg>
+                                    <span>Updating...</span>
+                                  </>
+                                ) : (
+                                  s
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>

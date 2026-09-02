@@ -8,6 +8,7 @@ import { HiringFunnelChart } from "@/components/dashboard/HiringFunnelChart";
 import { JobPostingsTable } from "@/components/dashboard/JobPostingsTable";
 import { UpcomingInterviewsPanel } from "@/components/dashboard/UpcomingInterviewsPanel";
 import { TopCandidatesPanel } from "@/components/dashboard/TopCandidatesPanel";
+import { RecentActivityPanel } from "@/components/dashboard/RecentActivityPanel";
 import { PostJobModal } from "@/components/dashboard/PostJobModal";
 import { EditJobModal } from "@/components/dashboard/EditJobModal";
 import { MobileMenuButton } from "@/components/dashboard/MobileMenuButton";
@@ -252,7 +253,7 @@ export function CompanyDashboard() {
         </div>
       </ScrollReveal>
 
-      <div className="grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-2">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:mb-8 sm:gap-4 xl:grid-cols-2">
         <ScrollReveal staggerIndex={0} durationMs={400} distancePx={16}>
           <UpcomingInterviewsPanel interviews={data.upcomingInterviews} />
         </ScrollReveal>
@@ -260,6 +261,12 @@ export function CompanyDashboard() {
           <TopCandidatesPanel candidates={data.topCandidates} />
         </ScrollReveal>
       </div>
+
+      <ScrollReveal durationMs={400} distancePx={16}>
+        <div className="mb-6 sm:mb-8">
+          <RecentActivityPanel activities={data.recentActivity} />
+        </div>
+      </ScrollReveal>
 
       <PostJobModal open={modalOpen} onClose={() => setModalOpen(false)} onJobCreated={handleJobCreated} />
       

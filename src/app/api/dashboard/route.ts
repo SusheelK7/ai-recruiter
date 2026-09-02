@@ -207,6 +207,40 @@ export async function GET(request: Request) {
         status: app.status,
       }));
 
+    // Recent Activity Feed from ActivityLog
+    const recentActivityLogs = await prisma.activityLog.findMany({
+      where: {
+        application: {
+          job: {
+            companyId,
+          },
+        },
+      },
+      include: {
+        application: {
+          select: {
+            candidateName: true,
+            job: {
+              select: {
+                title: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    const recentActivity = recentActivityLogs.map((log) => ({
+      id: log.id,
+      candidateName: log.application.candidateName,
+      jobTitle: log.application.job.title,
+      previousStage: log.previousStage,
+      newStage: log.newStage,
+      createdAt: log.createdAt.toISOString(),
+    }));
+
     return NextResponse.json({
       company,
       stats,
@@ -215,6 +249,7 @@ export async function GET(request: Request) {
       jobPostings,
       upcomingInterviews,
       topCandidates,
+      recentActivity,
     });
   } catch (error) {
     console.error('Dashboard API error:', error);

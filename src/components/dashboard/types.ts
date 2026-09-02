@@ -49,6 +49,15 @@ export interface TopCandidate {
   status: string;
 }
 
+export interface RecentActivityItem {
+  id: string;
+  candidateName: string;
+  jobTitle: string;
+  previousStage: string;
+  newStage: string;
+  createdAt: string;
+}
+
 export interface DashboardData {
   company: {
     id: string;
@@ -61,6 +70,7 @@ export interface DashboardData {
   jobPostings: JobPosting[];
   upcomingInterviews: UpcomingInterviewItem[];
   topCandidates: TopCandidate[];
+  recentActivity: RecentActivityItem[];
 }
 
 export interface CreatedJob {
