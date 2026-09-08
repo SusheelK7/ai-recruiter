@@ -3,6 +3,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ToastContainer, useToast } from "@/components/ui/Toast";
+import { ScheduleInterviewModal, type ScheduleInterviewCandidate } from "@/components/dashboard/ScheduleInterviewModal";
 
 interface Application {
   id: string;
@@ -21,6 +22,7 @@ interface Application {
   aiReasoning: string | null;
   createdAt: string;
   job: { id: string; title: string; publicUrl: string };
+  interview?: { id: string; scheduledTime: string | null; status: string } | null;
 }
 
 const STATUS_OPTIONS = ["applied", "screened", "tested", "interviewed", "hired", "rejected"];
@@ -159,6 +161,33 @@ function ApplicationsContent() {
 
   const { toasts, addToast, dismissToast } = useToast();
   const [updatingStage, setUpdatingStage] = useState<{ applicationId: string; stage: string } | null>(null);
+  const [schedulingCandidate, setSchedulingCandidate] = useState<ScheduleInterviewCandidate | null>(null);
+
+  const handleInterviewScheduled = (result: { interview: any; emailSent: boolean; emailWarning?: string }) => {
+    setApplications((prev) =>
+      prev.map((app) =>
+        app.id === result.interview.applicationId
+          ? {
+              ...app,
+              status: "interviewed",
+              interview: {
+                id: result.interview.id,
+                scheduledTime: result.interview.scheduledTime,
+                status: result.interview.status,
+              },
+            }
+          : app
+      )
+    );
+
+    if (result.emailWarning) {
+      addToast(result.emailWarning, "warning");
+    } else if (result.emailSent) {
+      addToast("Interview scheduled — confirmation email sent to candidate!", "success");
+    } else {
+      addToast("Interview scheduled successfully.", "success");
+    }
+  };
 
   // Sync filterJob if URL param changes
   useEffect(() => {
@@ -789,7 +818,46 @@ function ApplicationsContent() {
                             </svg>
                             {isShowingTranscript ? "Hide" : "View"} Video Transcript
                           </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSchedulingCandidate({
+                                id: app.id,
+                                candidateName: app.candidateName,
+                                candidateEmail: app.candidateEmail,
+                                jobTitle: app.job.title,
+                                existingScheduledTime: app.interview?.scheduledTime,
+                              });
+                            }}
+                            className="inline-flex items-center gap-2 rounded-xl border border-violet-300 bg-violet-50/80 px-4 py-2 text-xs font-semibold text-violet-700 transition-all hover:bg-violet-100 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-300"
+                          >
+                            <svg className="h-4 w-4 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            {app.interview?.scheduledTime ? "Reschedule Interview" : "Schedule Interview"}
+                          </button>
                         </div>
+
+                        {app.interview?.scheduledTime && (
+                          <div className="mt-2 flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50/60 p-2.5 text-xs text-violet-900 dark:border-violet-900/40 dark:bg-violet-950/20 dark:text-violet-200">
+                            <svg className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span>
+                              <strong>Interview Scheduled:</strong>{" "}
+                              {new Date(app.interview.scheduledTime).toLocaleString("en-US", {
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })}{" "}
+                              ({app.interview.status})
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Right: Recruiter Status Actions */}
@@ -926,6 +994,14 @@ function ApplicationsContent() {
           </div>
         </div>
       )}
+
+      {/* Schedule Interview Modal */}
+      <ScheduleInterviewModal
+        isOpen={!!schedulingCandidate}
+        candidate={schedulingCandidate}
+        onClose={() => setSchedulingCandidate(null)}
+        onScheduled={handleInterviewScheduled}
+      />
     </div>
   );
 }

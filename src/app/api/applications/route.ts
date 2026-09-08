@@ -42,6 +42,13 @@ export async function GET(request: NextRequest) {
             submittedAt: true,
           },
         },
+        interview: {
+          select: {
+            id: true,
+            scheduledTime: true,
+            status: true,
+          },
+        },
       },
     });
 
@@ -92,6 +99,13 @@ export async function GET(request: NextRequest) {
         createdAt: app.createdAt.toISOString(),
         job: app.job,
         candidateTest: app.candidateTest,
+        interview: app.interview
+          ? {
+              id: app.interview.id,
+              scheduledTime: app.interview.scheduledTime?.toISOString() || null,
+              status: app.interview.status,
+            }
+          : null,
       })),
     });
   } catch (error) {

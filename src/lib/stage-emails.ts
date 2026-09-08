@@ -77,9 +77,83 @@ export async function sendTestedEmail({
     return false;
   }
 }
+export interface ScheduleInterviewEmailParams extends StageEmailParams {
+  scheduledTime: Date | string;
+  notes?: string | null;
+}
 
 /**
- * "Interviewed" stage — Candidate selected for interview.
+ * Send walk-in / scheduled interview confirmation email with specific date and time.
+ * Informational only (no confirmation link required).
+ */
+export async function sendInterviewScheduledEmail({
+  candidateEmail,
+  candidateName,
+  jobTitle,
+  companyName,
+  scheduledTime,
+  notes,
+}: ScheduleInterviewEmailParams): Promise<boolean> {
+  const dateObj = new Date(scheduledTime);
+  const formattedDate = dateObj.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const formattedTime = dateObj.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  const html = wrapEmailBody(`
+    <div style="border-bottom: 2px solid #8b5cf6; padding-bottom: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+      <h2 style="color: #1e293b; margin: 0; font-size: 20px; font-weight: 700;">Interview Scheduled</h2>
+      <span style="background-color: #f5f3ff; color: #7c3aed; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600;">${companyName}</span>
+    </div>
+
+    <p style="font-size: 15px; line-height: 1.6; color: #334155;">Dear <strong>${candidateName}</strong>,</p>
+
+    <p style="font-size: 15px; line-height: 1.6; color: #334155;">
+      Your interview for the <strong>${jobTitle}</strong> position at <strong>${companyName}</strong> has been scheduled.
+    </p>
+
+    <div style="background-color: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 18px; margin: 20px 0;">
+      <h3 style="margin: 0 0 12px 0; font-size: 14px; color: #5b21b6; text-transform: uppercase; letter-spacing: 0.5px;">Interview Details</h3>
+      <p style="margin: 6px 0; font-size: 14px; color: #1e293b;"><strong>📅 Date:</strong> ${formattedDate}</p>
+      <p style="margin: 6px 0; font-size: 14px; color: #1e293b;"><strong>⏰ Time:</strong> ${formattedTime}</p>
+      <p style="margin: 6px 0; font-size: 14px; color: #1e293b;"><strong>💼 Position:</strong> ${jobTitle}</p>
+      <p style="margin: 6px 0; font-size: 14px; color: #1e293b;"><strong>🏢 Company:</strong> ${companyName}</p>
+      ${notes ? `<p style="margin: 10px 0 0 0; font-size: 13px; color: #4b5563; border-top: 1px dashed #cbd5e1; padding-top: 8px;"><strong>Note from recruiter:</strong> ${notes}</p>` : ''}
+    </div>
+
+    <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+      This is an informational confirmation for your records. A member of our recruiting team will connect with you at the scheduled time. No further action or confirmation is required from your side.
+    </p>
+
+    <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+      If you need to get in touch beforehand, please reply to our recruiting coordinator. We look forward to meeting with you!
+    </p>
+
+    ${emailFooter(companyName)}
+  `);
+
+  try {
+    await sendEmail({
+      to: candidateEmail,
+      subject: `Interview Scheduled: ${jobTitle} at ${companyName} (${formattedDate})`,
+      html,
+    });
+    return true;
+  } catch (err) {
+    console.error(`[StageEmail] Failed to send interview scheduled email to ${candidateEmail}:`, err);
+    return false;
+  }
+}
+
+/**
+ * "Interviewed" stage — Candidate selected for interview (general invitation).
  */
 export async function sendInterviewedEmail({
   candidateEmail,
@@ -101,7 +175,7 @@ export async function sendInterviewedEmail({
     <div style="background-color: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 16px; margin: 20px 0;">
       <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #5b21b6; text-transform: uppercase; letter-spacing: 0.5px;">What Happens Next</h3>
       <ul style="margin: 8px 0 0 0; padding-left: 20px; font-size: 14px; color: #1e293b; line-height: 1.8;">
-        <li>Our team will reach out to schedule a time that works for you</li>
+        <li>Our team will reach out to coordinate a walk-in or virtual session</li>
         <li>The interview will cover your experience, technical skills, and fit for the role</li>
         <li>Please have your resume and any relevant portfolio materials ready</li>
       </ul>
@@ -126,6 +200,7 @@ export async function sendInterviewedEmail({
     return false;
   }
 }
+
 
 /**
  * "Hired" stage — Congratulatory offer / next-steps email.
