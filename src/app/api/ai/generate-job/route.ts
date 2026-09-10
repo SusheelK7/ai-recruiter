@@ -1,9 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
-import { getGeminiErrorMessage, getGeminiModel } from '@/lib/gemini';
+import { getGeminiErrorMessage, generateWithFallback } from '@/lib/gemini';
 import { buildJobGenerationPrompt, parseGeneratedJobContent } from '@/lib/job-description';
 import { prisma } from '@/lib/prisma';
 import { generateJobSchema } from '@/lib/validations/job';
+
+function extractAndParseJson(text: string): unknown {
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // If markdown or conversational text wraps JSON, extract the outer-most JSON object
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      return JSON.parse(match[0]);
+    }
+    throw new Error('Unable to parse JSON from AI response');
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,16 +52,17 @@ export async function POST(request: NextRequest) {
       select: { name: true },
     });
 
-    const model = getGeminiModel();
     const prompt = buildJobGenerationPrompt(title, experienceLevel, company?.name, keywords);
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const { text } = await generateWithFallback(prompt, {
+      generationConfig: {
+        responseMimeType: 'application/json',
+      },
+    });
 
     let rawResult: unknown;
     try {
-      const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-      rawResult = JSON.parse(cleaned);
+      rawResult = extractAndParseJson(text);
     } catch {
       return NextResponse.json(
         { error: 'AI returned an invalid response. Please try again.' },

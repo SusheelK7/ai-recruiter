@@ -36,12 +36,13 @@ export async function POST(request: NextRequest) {
     const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Create the company and initial admin user record
+    // Create the company, initial admin user, and default Free subscription
     const company = await prisma.company.create({
       data: {
         name: companyName.trim(),
         email: normalizedEmail,
         passwordHash,
+        plan: 'free',
         emailVerified: false,
         lastVerificationSentAt: new Date(),
         users: {
@@ -53,9 +54,16 @@ export async function POST(request: NextRequest) {
             lastVerificationSentAt: new Date(),
           },
         },
+        subscription: {
+          create: {
+            plan: 'free',
+            status: 'active',
+          },
+        },
       },
       include: {
         users: true,
+        subscription: true,
       },
     });
 

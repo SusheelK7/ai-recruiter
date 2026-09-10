@@ -6,6 +6,7 @@ import { ApplicationForm } from "@/components/candidate/ApplicationForm";
 import { TestDisclaimer } from "@/components/candidate/TestDisclaimer";
 import { SecureTest } from "@/components/candidate/SecureTest";
 import { TestComplete } from "@/components/candidate/TestComplete";
+import type { PlanKey } from "@/lib/plans";
 
 interface JobData {
   id: string;
@@ -23,11 +24,14 @@ interface JobData {
 
 interface PublicJobViewProps {
   job: JobData;
+  companyPlan?: PlanKey;
+  hasSecureTest?: boolean;
+  hasVideoIntro?: boolean;
 }
 
 type FlowStep = "job" | "form" | "disclaimer" | "test" | "complete";
 
-export function PublicJobView({ job }: PublicJobViewProps) {
+export function PublicJobView({ job, companyPlan = 'free', hasSecureTest = false, hasVideoIntro = false }: PublicJobViewProps) {
   const [step, setStep] = useState<FlowStep>("job");
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [candidateData, setCandidateData] = useState<{
@@ -62,7 +66,12 @@ export function PublicJobView({ job }: PublicJobViewProps) {
   ) => {
     setApplicationId(appId);
     setCandidateData(data);
-    setStep("disclaimer");
+    // Free plan: skip assessment, go directly to completion
+    if (!hasSecureTest) {
+      setStep("complete");
+    } else {
+      setStep("disclaimer");
+    }
   };
 
   const handleStartTest = () => {
@@ -231,6 +240,7 @@ export function PublicJobView({ job }: PublicJobViewProps) {
               {/* Step Flow Progress Bar */}
               <div className="border-b border-[var(--border-color)] bg-[var(--bg-main)]/50 px-6 py-3">
                 <div className="flex items-center justify-between text-xs font-semibold">
+                  {/* Step 1: Profile (always shown) */}
                   <div className="flex items-center gap-2">
                     <span
                       className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
@@ -242,47 +252,71 @@ export function PublicJobView({ job }: PublicJobViewProps) {
                       {step === "form" ? "1" : "✓"}
                     </span>
                     <span className={step === "form" ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
-                      1. Profile & Video
+                      1. Profile {hasVideoIntro ? "& Video" : "& Resume"}
                     </span>
                   </div>
 
-                  <span className="text-[var(--border-color)]">→</span>
+                  {hasSecureTest && (
+                    <>
+                      <span className="text-[var(--border-color)]">→</span>
 
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                        step === "disclaimer"
-                          ? "bg-[var(--brand-accent)] text-white"
-                          : step === "test" || step === "complete"
-                          ? "bg-emerald-500 text-white"
-                          : "bg-[var(--border-color)] text-[var(--text-muted)]"
-                      }`}
-                    >
-                      {step === "test" || step === "complete" ? "✓" : "2"}
-                    </span>
-                    <span className={step === "disclaimer" ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
-                      2. Assessment Rules
-                    </span>
-                  </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                            step === "disclaimer"
+                              ? "bg-[var(--brand-accent)] text-white"
+                              : step === "test" || step === "complete"
+                              ? "bg-emerald-500 text-white"
+                              : "bg-[var(--border-color)] text-[var(--text-muted)]"
+                          }`}
+                        >
+                          {step === "test" || step === "complete" ? "✓" : "2"}
+                        </span>
+                        <span className={step === "disclaimer" ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
+                          2. Assessment Rules
+                        </span>
+                      </div>
 
-                  <span className="text-[var(--border-color)]">→</span>
+                      <span className="text-[var(--border-color)]">→</span>
 
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                        step === "test"
-                          ? "bg-[var(--brand-accent)] text-white"
-                          : step === "complete"
-                          ? "bg-emerald-500 text-white"
-                          : "bg-[var(--border-color)] text-[var(--text-muted)]"
-                      }`}
-                    >
-                      {step === "complete" ? "✓" : "3"}
-                    </span>
-                    <span className={step === "test" || step === "complete" ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
-                      3. Technical Test
-                    </span>
-                  </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                            step === "test"
+                              ? "bg-[var(--brand-accent)] text-white"
+                              : step === "complete"
+                              ? "bg-emerald-500 text-white"
+                              : "bg-[var(--border-color)] text-[var(--text-muted)]"
+                          }`}
+                        >
+                          {step === "complete" ? "✓" : "3"}
+                        </span>
+                        <span className={step === "test" || step === "complete" ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
+                          3. Technical Test
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {!hasSecureTest && (
+                    <>
+                      <span className="text-[var(--border-color)]">→</span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                            step === "complete"
+                              ? "bg-emerald-500 text-white"
+                              : "bg-[var(--border-color)] text-[var(--text-muted)]"
+                          }`}
+                        >
+                          {step === "complete" ? "✓" : "2"}
+                        </span>
+                        <span className={step === "complete" ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
+                          2. Submitted
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -294,6 +328,8 @@ export function PublicJobView({ job }: PublicJobViewProps) {
                   companyName={job.company.name}
                   onNext={handleFormNext}
                   onClose={() => setStep("job")}
+                  requireVideo={hasVideoIntro}
+                  hasAssessment={hasSecureTest}
                 />
               )}
 
@@ -322,6 +358,7 @@ export function PublicJobView({ job }: PublicJobViewProps) {
                   companyName={job.company.name}
                   candidateName={candidateData.candidateName || "Candidate"}
                   candidateEmail={candidateData.candidateEmail || "your email"}
+                  hasAssessment={hasSecureTest}
                 />
               )}
             </div>

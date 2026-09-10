@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { downloadFileBufferFromR2 } from '@/lib/r2';
 import { extractTextFromResume } from '@/lib/resume-parser';
 import { generateTestWithGemini, GeneratedQuestion } from '@/lib/test-generator';
+import { canUseFeature } from '@/lib/enforcePlanLimit';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -57,6 +58,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
             title: true,
             description: true,
             requiredSkills: true,
+            companyId: true,
             company: { select: { name: true } },
           },
         },
@@ -66,6 +68,19 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
 
     if (!application) {
       return NextResponse.json({ error: 'Application not found.' }, { status: 404 });
+    }
+
+    // Feature Gating: Check secureTest permission
+    const testGate = await canUseFeature(application.job.companyId, 'secureTest');
+    if (!testGate.allowed) {
+      return NextResponse.json(
+        {
+          error: testGate.reason || 'Upgrade to Pro to unlock secure testing',
+          upgradeRequired: true,
+          feature: 'secureTest',
+        },
+        { status: 403 }
+      );
     }
 
     // 1. If candidateTest already exists, return existing questions (fixed, not regenerated)

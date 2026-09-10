@@ -10,6 +10,7 @@ const publicExactPaths = new Set([
   '/forgot-password',
   '/verify-email',
   '/reset-password',
+  '/onboarding',
 ]);
 
 const publicPrefixes = ['/jobs'];
@@ -89,8 +90,72 @@ function isProtectedPath(pathname: string) {
   return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
+const PLATFORM_ADMIN_COOKIE_NAME = 'platformAdminToken';
+
+async function verifyPlatformAdminTokenEdge(token: string) {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+
+  const [headerPart, payloadPart, signaturePart] = parts;
+  try {
+    const header = base64UrlToJson(headerPart) as { alg?: string };
+    const payload = base64UrlToJson(payloadPart) as { type?: string; exp?: number; adminId?: string; email?: string };
+
+    if (header?.alg !== 'HS256' || payload?.type !== 'platform_admin') {
+      return null;
+    }
+
+    if (typeof payload.exp === 'number' && Date.now() >= payload.exp * 1000) {
+      return null;
+    }
+
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(JWT_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    const isValid = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      base64UrlToUint8Array(signaturePart) as BufferSource,
+      new TextEncoder().encode(`${headerPart}.${payloadPart}`)
+    );
+
+    return isValid ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // 1. ISOLATED PLATFORM ADMIN ROUTES (/platform-admin/*)
+  if (pathname.startsWith('/platform-admin')) {
+    const adminToken = request.cookies.get(PLATFORM_ADMIN_COOKIE_NAME)?.value;
+    const adminPayload = adminToken ? await verifyPlatformAdminTokenEdge(adminToken) : null;
+    const isPlatformAdmin = Boolean(adminPayload);
+
+    // If visiting /platform-admin/login
+    if (pathname === '/platform-admin/login') {
+      if (isPlatformAdmin) {
+        return NextResponse.redirect(new URL('/platform-admin', request.url));
+      }
+      return NextResponse.next();
+    }
+
+    // All other /platform-admin/* routes require valid platform_admin token
+    if (!isPlatformAdmin) {
+      return NextResponse.redirect(new URL('/platform-admin/login', request.url));
+    }
+
+    return NextResponse.next();
+  }
+
+  // 2. COMPANY & PUBLIC ROUTES
   const authToken = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   const payload = authToken ? await verifyAuthToken(authToken) : null;
   const isAuthenticated = Boolean(payload);
@@ -102,6 +167,21 @@ export async function middleware(request: NextRequest) {
   if (isProtectedPath(pathname)) {
     if (!isAuthenticated) {
       return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    // Block access if company is suspended
+    const companyStatus = request.cookies.get('companyStatus')?.value;
+    if (companyStatus === 'suspended') {
+      const response = NextResponse.redirect(new URL('/login?error=suspended', request.url));
+      response.cookies.delete(AUTH_COOKIE_NAME);
+      response.cookies.delete('companyStatus');
+      return response;
+    }
+
+    // Redirect to onboarding if profile is not completed
+    const profileCompleted = request.cookies.get('profileCompleted')?.value;
+    if (profileCompleted === 'false') {
+      return NextResponse.redirect(new URL('/onboarding', request.url));
     }
 
     return NextResponse.next();

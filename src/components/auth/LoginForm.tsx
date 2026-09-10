@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "../ui/Input";
 import { PrimaryButton } from "../ui/PrimaryButton";
@@ -22,6 +22,15 @@ export function LoginForm({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
   const [isUnverified, setIsUnverified] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendStatusMessage, setResendStatusMessage] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("error") === "suspended") {
+        setErrorMessage("This company account has been suspended by platform administration. Please contact support.");
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,13 +59,20 @@ export function LoginForm({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
 
       if (!res.ok || data?.message !== "Login successful!") {
         setErrorMessage(data.error || "Login failed. Please try again.");
-        if (res.status === 403 || data.emailVerified === false) {
+        if (data.suspended) {
+          setIsUnverified(false);
+        } else if (res.status === 403 || data.emailVerified === false) {
           setIsUnverified(true);
         }
         return;
       }
 
-      router.push("/dashboard");
+      // Redirect to onboarding if profile isn't completed, otherwise dashboard
+      if (data.profileCompleted === false) {
+        router.push("/onboarding");
+      } else {
+        router.push("/dashboard");
+      }
     } catch {
       setErrorMessage("Network error. Please check your connection and try again.");
     } finally {

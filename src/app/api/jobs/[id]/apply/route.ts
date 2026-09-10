@@ -7,6 +7,7 @@ import {
   validateResumeText,
 } from '@/lib/resume-parser';
 import { sendApplicationConfirmationEmail } from '@/lib/email';
+import { getPlan } from '@/lib/plans';
 import { z } from 'zod';
 
 const applySchema = z.object({
@@ -53,7 +54,14 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const refreshedJob = await prisma.job.findUnique({
       where: { id: job.id },
-      include: { company: { select: { name: true } } },
+      include: {
+        company: {
+          select: {
+            name: true,
+            subscription: { select: { plan: true } },
+          },
+        },
+      },
     });
 
     if (!refreshedJob) {
@@ -62,6 +70,12 @@ export async function POST(request: Request, { params }: RouteParams) {
         { status: 404 }
       );
     }
+
+    // Determine plan features for this company
+    const planKey = refreshedJob.company.subscription?.plan ?? 'free';
+    const plan = getPlan(planKey);
+    const requireVideo = plan.features.videoIntro;
+    const hasAssessment = plan.features.secureTest;
 
     const isExpired =
       refreshedJob.status !== 'active' ||
@@ -128,17 +142,16 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    // 5. Video Validation
-    if (!videoFile) {
+    // 5. Video Validation (only required for Pro/Business plans with videoIntro feature)
+    if (requireVideo && !videoFile) {
       return NextResponse.json(
         { success: false, error: 'Video introduction is required.' },
         { status: 400 }
       );
     }
 
-    // 6. Convert files to Buffers
+    // 6. Convert resume to Buffer
     const resumeBuffer = Buffer.from(await resumeFile.arrayBuffer());
-    const videoBuffer = Buffer.from(await videoFile.arrayBuffer());
 
     // 7. Resume Text Extraction & Server-side Content Validation
     let extractedResumeText = '';
@@ -172,21 +185,34 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    // 8. Upload Resume & Video to Cloudflare R2 in parallel for maximum speed
-    const [resumeUrl, videoUrl] = await Promise.all([
-      uploadResumeToR2(
+    // 8. Upload Resume to R2, and optionally video
+    let resumeUrl: string;
+    let videoUrl: string | null = null;
+
+    if (requireVideo && videoFile) {
+      const videoBuffer = Buffer.from(await videoFile.arrayBuffer());
+      [resumeUrl, videoUrl] = await Promise.all([
+        uploadResumeToR2(
+          resumeBuffer,
+          resumeFile.name,
+          resumeFile.type || 'application/pdf'
+        ),
+        uploadVideoToR2(
+          videoBuffer,
+          videoFile.name || `intro-${Date.now()}.webm`,
+          videoFile.type || 'video/webm'
+        ),
+      ]);
+    } else {
+      resumeUrl = await uploadResumeToR2(
         resumeBuffer,
         resumeFile.name,
         resumeFile.type || 'application/pdf'
-      ),
-      uploadVideoToR2(
-        videoBuffer,
-        videoFile.name || `intro-${Date.now()}.webm`,
-        videoFile.type || 'video/webm'
-      ),
-    ]);
+      );
+    }
 
-    // 9. Save Application in pending state (Status: 'test_pending')
+    // 9. Save Application — status depends on plan (free plan skips test)
+    const applicationStatus = hasAssessment ? 'test_pending' : 'pending';
     const application = await prisma.application.create({
       data: {
         jobId: refreshedJob.id,
@@ -196,13 +222,17 @@ export async function POST(request: Request, { params }: RouteParams) {
         resumeUrl,
         videoUrl,
         coverLetter,
-        status: 'test_pending',
+        status: applicationStatus,
       },
     });
 
+    const successMessage = hasAssessment
+      ? 'Application details saved. Proceed to the test instructions.'
+      : 'Application submitted successfully.';
+
     return NextResponse.json({
       success: true,
-      message: 'Application details saved. Proceed to the test instructions.',
+      message: successMessage,
       applicationId: application.id,
       status: application.status,
     });

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { expireStaleJobs } from "@/lib/jobs";
 import { notFound } from "next/navigation";
 import { PublicJobView } from "@/components/candidate/PublicJobView";
+import { getPlan, type PlanKey } from "@/lib/plans";
 
 interface PublicJobPageProps {
   params: Promise<{ publicUrl: string }>;
@@ -13,7 +14,12 @@ export default async function PublicJobPage({ params }: PublicJobPageProps) {
   const job = await prisma.job.findUnique({
     where: { publicUrl },
     include: {
-      company: { select: { name: true } },
+      company: {
+        select: {
+          name: true,
+          subscription: { select: { plan: true } },
+        },
+      },
     },
   });
 
@@ -26,7 +32,14 @@ export default async function PublicJobPage({ params }: PublicJobPageProps) {
 
   const refreshed = await prisma.job.findUnique({
     where: { id: job.id },
-    include: { company: { select: { name: true } } },
+    include: {
+      company: {
+        select: {
+          name: true,
+          subscription: { select: { plan: true } },
+        },
+      },
+    },
   });
 
   if (!refreshed) {
@@ -41,6 +54,9 @@ export default async function PublicJobPage({ params }: PublicJobPageProps) {
     ? (refreshed.requiredSkills as string[])
     : [];
 
+  const planKey = (refreshed.company.subscription?.plan ?? 'free') as PlanKey;
+  const plan = getPlan(planKey);
+
   return (
     <PublicJobView
       job={{
@@ -50,10 +66,13 @@ export default async function PublicJobPage({ params }: PublicJobPageProps) {
         experienceLevel: refreshed.experienceLevel,
         publicUrl: refreshed.publicUrl,
         status: refreshed.status,
-        company: refreshed.company,
+        company: { name: refreshed.company.name },
         requiredSkills: skills,
         isExpiredOrClosed,
       }}
+      companyPlan={planKey}
+      hasSecureTest={plan.features.secureTest}
+      hasVideoIntro={plan.features.videoIntro}
     />
   );
 }

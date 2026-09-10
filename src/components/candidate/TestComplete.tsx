@@ -8,6 +8,7 @@ interface TestCompleteProps {
   companyName: string;
   candidateName: string;
   candidateEmail: string;
+  hasAssessment?: boolean;
 }
 
 export function TestComplete({
@@ -15,6 +16,7 @@ export function TestComplete({
   companyName,
   candidateName,
   candidateEmail,
+  hasAssessment = true,
 }: TestCompleteProps) {
   return (
     <div className="overflow-hidden rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-6 text-center shadow-md dark:border-emerald-900/40 dark:bg-emerald-950/20 sm:p-10 max-w-2xl mx-auto space-y-6">
@@ -29,14 +31,16 @@ export function TestComplete({
           Application Submitted Successfully!
         </h2>
         <p className="mx-auto mt-3 max-w-lg text-sm text-emerald-900/90 dark:text-emerald-200/90 leading-relaxed sm:text-base">
-          Thank you for applying, <strong className="font-semibold text-emerald-950 dark:text-emerald-50">{candidateName}</strong>! Your application and technical screening assessment for{" "}
+          Thank you for applying, <strong className="font-semibold text-emerald-950 dark:text-emerald-50">{candidateName}</strong>! Your application{hasAssessment ? " and technical screening assessment" : ""} for{" "}
           <strong className="font-semibold text-emerald-950 dark:text-emerald-50">{jobTitle}</strong> at{" "}
-          <strong className="font-semibold text-emerald-950 dark:text-emerald-50">{companyName}</strong> have been finalized.
+          <strong className="font-semibold text-emerald-950 dark:text-emerald-50">{companyName}</strong> {hasAssessment ? "have been finalized" : "has been received"}.
         </p>
       </div>
 
       <div className="rounded-xl border border-emerald-200/60 bg-white/60 p-4 text-xs text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300 sm:text-sm">
-        The recruiting team has received your complete profile, resume, video introduction, and assessment. You will be notified via email at <strong className="font-semibold">{candidateEmail}</strong> regarding the next steps in the hiring process.
+        {hasAssessment
+          ? <>The recruiting team has received your complete profile, resume, video introduction, and assessment. You will be notified via email at <strong className="font-semibold">{candidateEmail}</strong> regarding the next steps in the hiring process.</>
+          : <>The recruiting team has received your resume and profile. You will be notified via email at <strong className="font-semibold">{candidateEmail}</strong> if selected for the next steps.</>}
       </div>
 
       <div className="pt-2">

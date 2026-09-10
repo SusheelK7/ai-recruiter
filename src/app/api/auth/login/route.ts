@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
     const company = await prisma.company.findUnique({
       where: { email: normalizedEmail },
       include: { users: true },
+      // profileCompleted is included by default
     });
 
     // If no company found with this email
@@ -40,6 +41,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Invalid password. Please try again.' },
         { status: 401 }
+      );
+    }
+
+    // Check if company account is suspended
+    if (company.status === 'suspended') {
+      return NextResponse.json(
+        {
+          error: 'This company account has been suspended by platform administration. Please contact support.',
+          suspended: true,
+        },
+        { status: 403 }
       );
     }
 
@@ -65,11 +77,13 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json(
       {
         message: 'Login successful!',
+        profileCompleted: company.profileCompleted,
         company: {
           id: company.id,
           name: company.name,
           email: company.email,
           plan: company.plan,
+          status: company.status,
           emailVerified: company.emailVerified,
           createdAt: company.createdAt,
         },
@@ -79,6 +93,23 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set('authToken', authToken, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    response.cookies.set('companyStatus', company.status || 'active', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    // Set profileCompleted cookie for middleware to read without DB calls
+    response.cookies.set('profileCompleted', company.profileCompleted ? 'true' : 'false', {
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',

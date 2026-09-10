@@ -5,6 +5,7 @@ import { downloadFileBufferFromR2 } from '@/lib/r2';
 import { extractTextFromResume } from '@/lib/resume-parser';
 import { scoreResumeWithGemini } from '@/lib/resume-scoring';
 import { transcribeVideoWithGemini } from '@/lib/transcribe';
+import { canRunAiScan, canUseFeature } from '@/lib/enforcePlanLimit';
 
 export async function POST(
   request: NextRequest,
@@ -45,6 +46,36 @@ export async function POST(
 
     if (!application || application.job.companyId !== companyId) {
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+    }
+
+    // Feature Gating Checks
+    if (analyzeType === 'video' || analyzeType === 'all') {
+      const videoGate = await canUseFeature(companyId, 'videoIntro');
+      if (!videoGate.allowed) {
+        return NextResponse.json(
+          {
+            error: videoGate.reason || 'Upgrade to Pro to unlock AI video intro transcription',
+            upgradeRequired: true,
+            feature: 'videoIntro',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    if (analyzeType === 'resume' || analyzeType === 'all') {
+      const scanCheck = await canRunAiScan(companyId);
+      if (!scanCheck.allowed) {
+        return NextResponse.json(
+          {
+            error: scanCheck.reason || 'AI scan limit reached for your plan. Upgrade to Pro or Business to scan more resumes.',
+            upgradeRequired: true,
+            limit: scanCheck.limit,
+            current: scanCheck.current,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const updateData: Record<string, any> = {};

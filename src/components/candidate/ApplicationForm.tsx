@@ -6,11 +6,13 @@ interface ApplicationFormProps {
   publicUrl: string;
   jobTitle: string;
   companyName: string;
+  requireVideo?: boolean;
+  hasAssessment?: boolean;
   onNext?: (applicationId: string, candidateData: { candidateName: string; candidateEmail: string }) => void;
   onClose?: () => void;
 }
 
-export function ApplicationForm({ publicUrl, jobTitle, companyName, onNext, onClose }: ApplicationFormProps) {
+export function ApplicationForm({ publicUrl, jobTitle, companyName, requireVideo = true, hasAssessment = true, onNext, onClose }: ApplicationFormProps) {
   // Form fields
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
@@ -249,8 +251,7 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName, onNext, onCl
     candidateEmail.includes("@") &&
     candidatePhone.trim().length >= 7 &&
     resumeFile !== null &&
-    videoFile !== null &&
-    !isRecording;
+    (!requireVideo || (videoFile !== null && !isRecording));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,7 +270,9 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName, onNext, onCl
         formData.append("coverLetter", coverLetter.trim());
       }
       formData.append("resume", resumeFile as Blob);
-      formData.append("video", videoFile as Blob);
+      if (requireVideo && videoFile) {
+        formData.append("video", videoFile as Blob);
+      }
 
       setSubmissionProgress("Uploading files & finalizing submission...");
 
@@ -340,7 +343,7 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName, onNext, onCl
             <h3 className="text-xl font-bold text-[var(--text-primary)]">Apply for {jobTitle}</h3>
           </div>
           <p className="mt-1 text-xs text-[var(--text-muted)] sm:text-sm">
-            {companyName} • Complete your profile, attach your resume, and record a 60-second introduction.
+            {companyName} • Complete your profile{requireVideo ? ", attach your resume, and record a 60-second introduction" : " and attach your resume"}.
           </p>
         </div>
         {onClose && (
@@ -502,7 +505,8 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName, onNext, onCl
           )}
         </div>
 
-        {/* Video Introduction Section */}
+        {/* Video Introduction Section — only shown for Pro/Business plans */}
+        {requireVideo && (
         <div className="space-y-3 pt-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -666,6 +670,7 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName, onNext, onCl
             </div>
           )}
         </div>
+        )} {/* end requireVideo */}
 
         {/* Submit Application Button */}
         <div className="pt-4 border-t border-[var(--border-color)]">
@@ -688,7 +693,7 @@ export function ApplicationForm({ publicUrl, jobTitle, companyName, onNext, onCl
               <span>Saving Profile & Files...</span>
             ) : (
               <>
-                <span>Next: Assessment Rules</span>
+                <span>{hasAssessment ? "Next: Assessment Rules" : "Submit Application"}</span>
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                 </svg>

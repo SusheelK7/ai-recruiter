@@ -4,6 +4,7 @@ import React, { Suspense, useCallback, useEffect, useMemo, useState } from "reac
 import { useSearchParams } from "next/navigation";
 import { ToastContainer, useToast } from "@/components/ui/Toast";
 import { ScheduleInterviewModal, type ScheduleInterviewCandidate } from "@/components/dashboard/ScheduleInterviewModal";
+import { FeatureGate } from "@/components/billing/FeatureGate";
 
 interface Application {
   id: string;
@@ -727,46 +728,52 @@ function ApplicationsContent() {
                     </div>
 
                     {/* Technical Screening Assessment & Proctoring Summary */}
-                    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)]/60 p-4 space-y-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <svg className="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <h5 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                            AI-Personalized Technical Assessment
-                          </h5>
+                    <FeatureGate
+                      feature="secureTest"
+                      fallbackTitle="AI-Personalized Technical Assessment"
+                      fallbackDescription="Anti-cheat proctored coding assessments with browser lockdown and violation logging."
+                    >
+                      <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)]/60 p-4 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <svg className="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <h5 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                              AI-Personalized Technical Assessment
+                            </h5>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-[var(--text-primary)]">
+                              Score: {app.testScore !== null && app.testScore !== undefined ? `${app.testScore}/100` : "Pending"}
+                            </span>
+                            {Array.isArray(app.violationLog) && app.violationLog.length > 0 ? (
+                              <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                                ⚠️ {app.violationLog.length} Security Incident(s) Logged
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                ✓ Proctored Clean
+                              </span>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-[var(--text-primary)]">
-                            Score: {app.testScore !== null && app.testScore !== undefined ? `${app.testScore}/100` : "Pending"}
-                          </span>
-                          {Array.isArray(app.violationLog) && app.violationLog.length > 0 ? (
-                            <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-                              ⚠️ {app.violationLog.length} Security Incident(s) Logged
-                            </span>
-                          ) : (
-                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                              ✓ Proctored Clean
-                            </span>
-                          )}
-                        </div>
+                        {Array.isArray(app.violationLog) && app.violationLog.length > 0 && (
+                          <div className="rounded-lg border border-rose-200/80 bg-rose-50/50 p-2.5 text-xs text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200 space-y-1">
+                            <p className="font-semibold">Security Violations Recorded:</p>
+                            <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
+                              {app.violationLog.map((v, i) => (
+                                <li key={i}>
+                                  <strong>{v.type}:</strong> {v.details || "Tab switched or window lost focus"} ({new Date(v.timestamp).toLocaleTimeString()})
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
-
-                      {Array.isArray(app.violationLog) && app.violationLog.length > 0 && (
-                        <div className="rounded-lg border border-rose-200/80 bg-rose-50/50 p-2.5 text-xs text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200 space-y-1">
-                          <p className="font-semibold">Security Violations Recorded:</p>
-                          <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
-                            {app.violationLog.map((v, i) => (
-                              <li key={i}>
-                                <strong>{v.type}:</strong> {v.details || "Tab switched or window lost focus"} ({new Date(v.timestamp).toLocaleTimeString()})
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
+                    </FeatureGate>
 
                     {/* Candidate Actions & Assets */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-2">
@@ -789,35 +796,43 @@ function ApplicationsContent() {
                             Download Resume
                           </a>
 
-                          {app.videoUrl && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveVideoModal({ applicationId: app.id, candidateName: app.candidateName });
-                              }}
-                              className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-2 text-xs font-semibold text-indigo-700 transition-all hover:bg-indigo-100 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
-                            >
-                              <svg className="h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                              </svg>
-                              Watch Video Intro
-                            </button>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowTranscript(isShowingTranscript ? null : app.id);
-                            }}
-                            className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-color)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] transition-all hover:border-violet-400 hover:text-violet-600 dark:hover:text-violet-400"
+                          <FeatureGate
+                            feature="videoIntro"
+                            fallbackTitle="AI Video Intro & Playback"
+                            fallbackDescription="Watch candidate intro recordings and review Gemini AI speech transcripts."
                           >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            {isShowingTranscript ? "Hide" : "View"} Video Transcript
-                          </button>
+                            <div className="flex flex-wrap gap-2">
+                              {app.videoUrl && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveVideoModal({ applicationId: app.id, candidateName: app.candidateName });
+                                  }}
+                                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-2 text-xs font-semibold text-indigo-700 transition-all hover:bg-indigo-100 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
+                                >
+                                  <svg className="h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                  </svg>
+                                  Watch Video Intro
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowTranscript(isShowingTranscript ? null : app.id);
+                                }}
+                                className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-color)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] transition-all hover:border-violet-400 hover:text-violet-600 dark:hover:text-violet-400"
+                              >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                {isShowingTranscript ? "Hide" : "View"} Video Transcript
+                              </button>
+                            </div>
+                          </FeatureGate>
 
                           <button
                             type="button"

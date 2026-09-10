@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { downloadVideoFromR2 } from '@/lib/r2';
+import { canUseFeature } from '@/lib/enforcePlanLimit';
 
 /**
  * GET /api/applications/[id]/video
@@ -19,6 +20,19 @@ export async function GET(
 
     const { id: applicationId } = await params;
     const { companyId } = session;
+
+    // Feature Gating: Check videoIntro permission
+    const videoGate = await canUseFeature(companyId, 'videoIntro');
+    if (!videoGate.allowed) {
+      return NextResponse.json(
+        {
+          error: videoGate.reason || 'Upgrade to Pro to watch candidate video introductions',
+          upgradeRequired: true,
+          feature: 'videoIntro',
+        },
+        { status: 403 }
+      );
+    }
 
     // Fetch application and verify it belongs to the recruiter's company
     const application = await prisma.application.findUnique({

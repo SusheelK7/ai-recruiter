@@ -120,3 +120,43 @@ export function verifyPasswordResetToken(token: string): PasswordResetTokenPaylo
     return null;
   }
 }
+
+export interface PlatformAdminTokenPayload {
+  adminId: string;
+  email: string;
+  type: 'platform_admin';
+  iat?: number;
+  exp?: number;
+}
+
+/**
+ * Generate JWT platform admin token valid for 24 hours.
+ */
+export function generatePlatformAdminToken(admin: { id: string; email: string }): string {
+  return jwt.sign(
+    {
+      adminId: admin.id,
+      email: admin.email,
+      type: 'platform_admin',
+    },
+    JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+}
+
+/**
+ * Verify JWT platform admin token.
+ */
+export function verifyPlatformAdminToken(token: string): PlatformAdminTokenPayload | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as PlatformAdminTokenPayload;
+    if (decoded && decoded.type === 'platform_admin') {
+      return decoded;
+    }
+    return null;
+  } catch (error) {
+    console.error('Invalid or expired platform admin token:', error);
+    return null;
+  }
+}
+

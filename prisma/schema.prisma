@@ -12,11 +12,21 @@ model Company {
   email                  String    @unique
   passwordHash           String
   plan                   String    @default("free")
+  status                 String    @default("active") // active | suspended | payment_issue
   emailVerified          Boolean   @default(false)
   passwordResetAt        DateTime?
   lastVerificationSentAt DateTime?
   lastPasswordResetSentAt DateTime?
   createdAt              DateTime  @default(now())
+  // Company Profile Fields
+  industry               String?
+  foundedYear            Int?
+  employeeCount          String?
+  website                String?
+  location               String?
+  description            String?
+  logoUrl                String?
+  profileCompleted       Boolean   @default(false)
   users                  User[]
   jobs                   Job[]
   subscription           Subscription?
@@ -121,13 +131,18 @@ model Interview {
 }
 
 model Subscription {
-  id               String    @id @default(cuid())
-  companyId        String    @unique
-  company          Company   @relation(fields: [companyId], references: [id])
-  plan             String    @default("free")
-  stripeCustomerId String?
-  renewsAt         DateTime?
+  id                   String    @id @default(cuid())
+  companyId            String    @unique
+  company              Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan                 String    @default("free")
+  status               String    @default("active") // active | payment_issue | canceled
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  renewsAt             DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
+
 
 model ActivityLog {
   id            String      @id @default(cuid())
@@ -137,4 +152,30 @@ model ActivityLog {
   newStage      String
   performedBy   String
   createdAt     DateTime    @default(now())
-}
+}
+
+model PlatformAdmin {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+}
+
+model PlatformAuditLog {
+  id              String    @id @default(cuid())
+  platformAdminId String
+  action          String    // suspend_company | reinstate_company | manual_plan_change
+  targetCompanyId String
+  reason          String?
+  createdAt       DateTime  @default(now())
+}
+
+model AiUsageLog {
+  id            String    @id @default(cuid())
+  companyId     String
+  feature       String    // resume_scan | test_eval | video_transcription | chatbot_message
+  tokensUsed    Int       @default(0)
+  estimatedCost Float     @default(0.0)
+  createdAt     DateTime  @default(now())
+}
+

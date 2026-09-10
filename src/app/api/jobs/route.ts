@@ -3,12 +3,27 @@ import { getSessionFromRequest } from '@/lib/auth';
 import { generatePublicUrl, resolveExpiryDate } from '@/lib/jobs';
 import { createJobSchema } from '@/lib/validations/job';
 import { prisma } from '@/lib/prisma';
+import { canPostJob } from '@/lib/enforcePlanLimit';
 
 export async function POST(request: NextRequest) {
   try {
     const session = getSessionFromRequest(request);
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check plan job limit
+    const jobCheck = await canPostJob(session.companyId);
+    if (!jobCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: jobCheck.reason,
+          upgradeRequired: true,
+          limit: jobCheck.limit,
+          current: jobCheck.current,
+        },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
