@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { sendInterviewScheduledEmail } from '@/lib/stage-emails';
+import { createNotification } from '@/lib/notifications';
 
 /**
  * GET /api/interviews
@@ -184,6 +185,15 @@ export async function POST(request: NextRequest) {
         },
       }),
     ]);
+
+    await createNotification({
+      companyId,
+      type: 'interview',
+      title: `Interview Scheduled: ${application.candidateName}`,
+      message: `Interview set for ${new Date(scheduledTime).toLocaleString()} with ${application.candidateName} for ${application.job.title}.`,
+      link: `/dashboard/interviews`,
+      metadata: { applicationId, interviewId: interviewRecord.id },
+    });
 
     // Send informational email to candidate
     let emailSent = false;

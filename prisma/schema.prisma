@@ -30,6 +30,7 @@ model Company {
   users                  User[]
   jobs                   Job[]
   subscription           Subscription?
+  notifications          Notification[]
 }
 
 model User {
@@ -177,5 +178,21 @@ model AiUsageLog {
   tokensUsed    Int       @default(0)
   estimatedCost Float     @default(0.0)
   createdAt     DateTime  @default(now())
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  type        String   // application | ai_screening | test_completed | interview | stage_change | billing | system
+  title       String
+  message     String
+  link        String?  // navigation url, e.g. /dashboard/applications
+  read        Boolean  @default(false)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([companyId, read])
+  @@index([companyId, createdAt])
 }
 

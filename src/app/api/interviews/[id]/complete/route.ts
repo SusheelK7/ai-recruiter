@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createNotification } from '@/lib/notifications';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -62,6 +63,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
       }),
     ]);
+
+    await createNotification({
+      companyId,
+      type: 'interview',
+      title: `Interview Completed: ${interview.application.candidateName}`,
+      message: `Interview with ${interview.application.candidateName} for "${interview.application.job.title}" has been completed. Awaiting decision.`,
+      link: `/dashboard/interviews`,
+      metadata: { applicationId: interview.applicationId, interviewId },
+    });
 
     return NextResponse.json({
       success: true,

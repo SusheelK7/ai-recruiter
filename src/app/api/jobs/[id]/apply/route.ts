@@ -8,6 +8,7 @@ import {
 } from '@/lib/resume-parser';
 import { sendApplicationConfirmationEmail } from '@/lib/email';
 import { getPlan } from '@/lib/plans';
+import { createNotification } from '@/lib/notifications';
 import { z } from 'zod';
 
 const applySchema = z.object({
@@ -224,6 +225,16 @@ export async function POST(request: Request, { params }: RouteParams) {
         coverLetter,
         status: applicationStatus,
       },
+    });
+
+    // Notify recruiter of new candidate application
+    await createNotification({
+      companyId: refreshedJob.companyId,
+      type: 'application',
+      title: `New Candidate: ${candidateName}`,
+      message: `${candidateName} applied for "${refreshedJob.title}".`,
+      link: `/dashboard/applications?jobId=${refreshedJob.id}`,
+      metadata: { applicationId: application.id, jobId: refreshedJob.id },
     });
 
     const successMessage = hasAssessment

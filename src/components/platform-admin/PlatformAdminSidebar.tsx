@@ -76,7 +76,7 @@ export function PlatformAdminSidebar() {
   };
 
   return (
-    <aside className="w-64 shrink-0 bg-[#0b0f19] border-r border-[#1e293b] flex flex-col justify-between min-h-screen select-none">
+    <aside className="w-64 shrink-0 bg-[#0b0f19] border-r border-[#1e293b] flex flex-col justify-between h-screen sticky top-0 self-start select-none overflow-y-auto z-20">
       <div>
         {/* Platform Admin Brand Header */}
         <div className="p-5 border-b border-[#1e293b]">

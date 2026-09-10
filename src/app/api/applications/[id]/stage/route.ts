@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { sendStageEmail } from '@/lib/stage-emails';
+import { createNotification } from '@/lib/notifications';
 
 const VALID_STAGES = ['applied', 'screened', 'tested', 'interviewed', 'hired', 'rejected'] as const;
 type PipelineStage = (typeof VALID_STAGES)[number];
@@ -89,6 +90,25 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
       }),
     ]);
+
+    // Dispatch recruiter notification
+    const stageLabels: Record<string, string> = {
+      applied: 'Applied',
+      screened: 'Resume Screened',
+      tested: 'Assessment Passed',
+      interviewed: 'Interview Stage',
+      hired: '🎉 Candidate Hired',
+      rejected: 'Application Rejected',
+    };
+
+    await createNotification({
+      companyId,
+      type: stage === 'hired' ? 'stage_change' : stage === 'interviewed' ? 'interview' : 'stage_change',
+      title: `${stageLabels[stage] || stage}: ${application.candidateName}`,
+      message: `${application.candidateName} was moved to ${stage} for "${application.job.title}".`,
+      link: `/dashboard/applications?jobId=${application.jobId}`,
+      metadata: { applicationId, stage, previousStage },
+    });
 
     // 6. Send stage-appropriate email (non-blocking for the DB update)
     let emailSent = false;

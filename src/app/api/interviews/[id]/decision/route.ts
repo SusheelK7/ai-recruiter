@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { sendStageEmail } from '@/lib/stage-emails';
+import { createNotification } from '@/lib/notifications';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -89,6 +90,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
       }),
     ]);
+
+    await createNotification({
+      companyId,
+      type: decision === 'hired' ? 'stage_change' : 'stage_change',
+      title: decision === 'hired' ? `🎉 Offer Accepted: ${application.candidateName}` : `Candidate Rejected: ${application.candidateName}`,
+      message: `${application.candidateName} was marked as ${decision} for "${application.job.title}".`,
+      link: `/dashboard/interviews`,
+      metadata: { applicationId: application.id, interviewId, decision },
+    });
 
     // Send stage email (Hired or Rejected)
     let emailSent = false;

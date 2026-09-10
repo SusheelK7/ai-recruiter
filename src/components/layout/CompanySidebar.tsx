@@ -7,11 +7,13 @@ import { useDashboard } from "@/components/dashboard/DashboardProvider";
 import { NavTooltip } from "@/components/dashboard/NavTooltip";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LogoutButton } from "@/components/dashboard/LogoutButton";
+import { SidebarNotifBadge } from "@/components/layout/SidebarNotifBadge";
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  badge?: React.ReactNode;
 }
 
 interface NavSection {
@@ -75,6 +77,12 @@ const BuildingIcon = () => (
   </svg>
 );
 
+const BellIcon = () => (
+  <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+  </svg>
+);
+
 const navSections: NavSection[] = [
   {
     title: "RECRUIT",
@@ -113,30 +121,31 @@ export function CompanySidebar() {
 
   const sidebarWidth = collapsed ? "w-[72px]" : "w-[260px]";
 
+  const notifActive = pathname.startsWith("/dashboard/notifications");
+
   return (
     <>
+      {/* Mobile Overlay */}
       {mobileOpen && (
-        <button
-          type="button"
-          aria-label="Close navigation menu"
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+        <div
+          className="fixed inset-0 z-20 bg-black/40 backdrop-blur-sm lg:hidden"
           onClick={closeMobileSidebar}
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen shrink-0 flex-col border-r border-[var(--border-color)] bg-[var(--bg-card)] transition-[transform,width] duration-[225ms] ease-in-out lg:sticky lg:top-0 lg:z-auto ${sidebarWidth} ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
+        className={`
+          ${sidebarWidth}
+          fixed left-0 top-0 z-30 flex h-[100dvh] flex-col
+          border-r border-[var(--border-color)] bg-[var(--bg-card)]
+          transition-[width] duration-[225ms] ease-in-out
+          lg:sticky lg:top-0 lg:h-screen lg:self-start lg:shrink-0 lg:z-30
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        `}
       >
-        <div
-          className={`flex shrink-0 border-b border-[var(--border-color)] ${
-            collapsed
-              ? "flex-col items-center gap-2 px-2 py-3"
-              : "h-16 items-center justify-between px-4"
-          }`}
-        >
-          <div className={`flex items-center gap-2.5 overflow-hidden ${collapsed ? "justify-center" : ""}`}>
+        {/* Logo & Collapse Button */}
+        <div className={`flex h-16 shrink-0 items-center border-b border-[var(--border-color)] px-4 ${collapsed ? "justify-center" : "justify-between gap-3"}`}>
+          <div className={`flex items-center ${collapsed ? "" : "gap-2.5"}`}>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-accent)] text-sm font-bold text-white">
               AI
             </div>
@@ -163,6 +172,7 @@ export function CompanySidebar() {
           </button>
         </div>
 
+        {/* Main Nav */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 scroll-smooth">
           {navSections.map((section) => (
             <div key={section.title} className="mb-5 last:mb-0">
@@ -198,9 +208,43 @@ export function CompanySidebar() {
               </ul>
             </div>
           ))}
+
+          {/* Notifications Nav Item */}
+          <div className="mt-1">
+            {!collapsed && (
+              <p className="mb-2 px-3 text-[10px] font-semibold tracking-widest text-[var(--text-muted)]">
+                UPDATES
+              </p>
+            )}
+            <NavTooltip label="Notifications" show={collapsed}>
+              <Link
+                href="/dashboard/notifications"
+                onClick={closeMobileSidebar}
+                className={`group flex items-center rounded-xl text-sm font-medium transition-all duration-200 ${
+                  collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
+                } ${
+                  notifActive
+                    ? "bg-[var(--brand-accent)] text-white shadow-sm"
+                    : "text-[var(--text-muted)] hover:bg-[var(--bg-main)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                {/* Bell icon with live badge */}
+                <span className="relative shrink-0">
+                  <BellIcon />
+                  <SidebarNotifBadge active={notifActive} />
+                </span>
+                {!collapsed && <span className="truncate">Notifications</span>}
+                {/* Inline count badge when expanded */}
+                {!collapsed && !notifActive && (
+                  <SidebarNotifBadge inline active={false} />
+                )}
+              </Link>
+            </NavTooltip>
+          </div>
         </nav>
 
-        <div className="border-t border-[var(--border-color)] p-3">
+        {/* Footer: Theme + Company */}
+        <div className="shrink-0 border-t border-[var(--border-color)] p-3">
           <div className={`mb-3 flex ${collapsed ? "justify-center" : "justify-end px-1"}`}>
             <ThemeToggle />
           </div>

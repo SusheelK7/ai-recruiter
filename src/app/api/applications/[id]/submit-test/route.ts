@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { GeneratedQuestion } from '@/lib/test-generator';
 import { sendApplicationConfirmationEmail } from '@/lib/email';
+import { createNotification } from '@/lib/notifications';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -30,6 +31,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       include: {
         job: {
           select: {
+            id: true,
+            companyId: true,
             title: true,
             company: { select: { name: true } },
           },
@@ -116,6 +119,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       companyName: application.job.company.name,
     }).catch((emailErr) => {
       console.error('[Submit Test] Candidate confirmation email error:', emailErr);
+    });
+
+    // Notify recruiter of completed assessment
+    await createNotification({
+      companyId: application.job.companyId,
+      type: 'test_completed',
+      title: `Assessment Completed: ${application.candidateName}`,
+      message: `${application.candidateName} completed the skills assessment for "${application.job.title}" with a score of ${testScore}%.`,
+      link: `/dashboard/applications?jobId=${application.jobId}`,
+      metadata: { applicationId, testScore, violationsCount: violationLog?.length || 0 },
     });
 
     // Return generic success message without leaking testScore or answer keys
