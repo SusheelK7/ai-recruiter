@@ -4,6 +4,7 @@ import { generatePublicUrl, resolveExpiryDate } from '@/lib/jobs';
 import { createJobSchema } from '@/lib/validations/job';
 import { prisma } from '@/lib/prisma';
 import { canPostJob } from '@/lib/enforcePlanLimit';
+import { getAppBaseUrl } from '@/lib/app-url';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     const expiryDate = resolveExpiryDate(expiryDays, customExpiryDate);
     const publicUrl = generatePublicUrl(title);
-    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appBaseUrl = getAppBaseUrl();
 
     const job = await prisma.job.create({
       data: {

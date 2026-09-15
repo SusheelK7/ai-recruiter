@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getAppBaseUrl } from '@/lib/app-url';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appBaseUrl = getAppBaseUrl();
 
     return NextResponse.json({
       job: {

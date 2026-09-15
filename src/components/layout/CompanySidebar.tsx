@@ -139,11 +139,12 @@ export function CompanySidebar() {
           fixed left-0 top-0 z-30 flex h-[100dvh] flex-col
           border-r border-[var(--border-color)] bg-[var(--bg-card)]
           transition-[width] duration-[225ms] ease-in-out
-          lg:sticky lg:top-0 lg:h-screen lg:self-start lg:shrink-0 lg:z-30
+          lg:relative lg:left-auto lg:top-auto lg:z-30 lg:h-auto lg:min-h-screen lg:self-stretch lg:shrink-0
           ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
-        {/* Logo & Collapse Button */}
+        <div className="flex h-full w-full flex-col lg:sticky lg:top-0 lg:h-screen">
+          {/* Logo & Collapse Button */}
         <div className={`flex h-16 shrink-0 items-center border-b border-[var(--border-color)] px-4 ${collapsed ? "justify-center" : "justify-between gap-3"}`}>
           <div className={`flex items-center ${collapsed ? "" : "gap-2.5"}`}>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-accent)] text-sm font-bold text-white">
@@ -268,6 +269,7 @@ export function CompanySidebar() {
             )}
             {collapsed && <LogoutButton compact iconOnly />}
           </div>
+        </div>
         </div>
       </aside>
     </>

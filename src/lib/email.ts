@@ -1,19 +1,13 @@
 import { sendEmail } from './mailer';
-
-const getAppUrl = () => {
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
-  }
-  return 'http://localhost:3000';
-};
+import { getAppBaseUrl } from './app-url';
 
 export function getVerificationUrl(token: string): string {
-  const appUrl = getAppUrl();
+  const appUrl = getAppBaseUrl();
   return `${appUrl}/verify-email?token=${encodeURIComponent(token)}`;
 }
 
 export function getResetUrl(token: string): string {
-  const appUrl = getAppUrl();
+  const appUrl = getAppBaseUrl();
   return `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
 }
 

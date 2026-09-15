@@ -76,9 +76,10 @@ export function PlatformAdminSidebar() {
   };
 
   return (
-    <aside className="w-64 shrink-0 bg-[#0b0f19] border-r border-[#1e293b] flex flex-col justify-between h-screen sticky top-0 self-start select-none overflow-y-auto z-20">
-      <div>
-        {/* Platform Admin Brand Header */}
+    <aside className="w-64 shrink-0 bg-[#0b0f19] border-r border-[#1e293b] relative self-stretch min-h-screen select-none z-20">
+      <div className="sticky top-0 h-screen flex flex-col justify-between overflow-y-auto">
+        <div>
+          {/* Platform Admin Brand Header */}
         <div className="p-5 border-b border-[#1e293b]">
           <div className="flex items-center space-x-3">
             <div className="h-9 w-9 rounded-lg bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold shadow-inner">
@@ -145,6 +146,7 @@ export function PlatformAdminSidebar() {
             </svg>
           </button>
         </div>
+      </div>
       </div>
     </aside>
   );

@@ -7,9 +7,4 @@ export const stripe = new Stripe(stripeSecretKey, {
   typescript: true,
 });
 
-export function getAppBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
-  }
-  return 'http://localhost:3000';
-}
+export { getAppBaseUrl } from './app-url';

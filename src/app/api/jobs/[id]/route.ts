@@ -3,6 +3,7 @@ import { getSessionFromRequest } from '@/lib/auth';
 import { resolveExpiryDate } from '@/lib/jobs';
 import { updateJobSchema } from '@/lib/validations/job';
 import { prisma } from '@/lib/prisma';
+import { getAppBaseUrl } from '@/lib/app-url';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appBaseUrl = getAppBaseUrl();
 
     return NextResponse.json({
       job: {
@@ -112,7 +113,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appBaseUrl = getAppBaseUrl();
 
     return NextResponse.json({
       job: {

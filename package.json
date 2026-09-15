@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "postinstall": "prisma generate",
     "db:clean": "tsx prisma/clean.ts",
     "test:billing": "tsx scripts/test-billing-and-gating.ts"
   },

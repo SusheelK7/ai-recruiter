@@ -7,6 +7,8 @@ import { scoreResumeWithGemini } from '@/lib/resume-scoring';
 import { transcribeVideoWithGemini } from '@/lib/transcribe';
 import { canRunAiScan, canUseFeature } from '@/lib/enforcePlanLimit';
 
+export const maxDuration = 60;
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

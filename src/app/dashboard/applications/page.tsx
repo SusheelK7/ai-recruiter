@@ -730,8 +730,9 @@ function ApplicationsContent() {
                     {/* Technical Screening Assessment & Proctoring Summary */}
                     <FeatureGate
                       feature="secureTest"
-                      fallbackTitle="AI-Personalized Technical Assessment"
-                      fallbackDescription="Anti-cheat proctored coding assessments with browser lockdown and violation logging."
+                      variant="banner"
+                      fallbackTitle="AI-Personalized Technical Assessment & Proctoring"
+                      fallbackDescription="Anti-cheat proctored coding assessments, browser lockdown violation logs, and test score breakdowns are available on Pro and Business tiers."
                     >
                       <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)]/60 p-4 space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -782,7 +783,7 @@ function ApplicationsContent() {
                         <h5 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                           Candidate Documents & Video
                         </h5>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <a
                             href={`/api/applications/${app.id}/resume`}
                             target="_blank"
@@ -796,42 +797,48 @@ function ApplicationsContent() {
                             Download Resume
                           </a>
 
-                          <FeatureGate
-                            feature="videoIntro"
-                            fallbackTitle="AI Video Intro & Playback"
-                            fallbackDescription="Watch candidate intro recordings and review Gemini AI speech transcripts."
-                          >
-                            <div className="flex flex-wrap gap-2">
-                              {app.videoUrl && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveVideoModal({ applicationId: app.id, candidateName: app.candidateName });
-                                  }}
-                                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-2 text-xs font-semibold text-indigo-700 transition-all hover:bg-indigo-100 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
-                                >
-                                  <svg className="h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                                  </svg>
-                                  Watch Video Intro
-                                </button>
-                              )}
-
+                          {app.videoUrl && (
+                            <FeatureGate
+                              feature="videoIntro"
+                              variant="inline"
+                              fallbackTitle="AI Video Intro & Playback"
+                              fallbackDescription="Watch candidate intro recordings and review Gemini AI speech transcripts."
+                            >
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setShowTranscript(isShowingTranscript ? null : app.id);
+                                  setActiveVideoModal({ applicationId: app.id, candidateName: app.candidateName });
                                 }}
-                                className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-color)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] transition-all hover:border-violet-400 hover:text-violet-600 dark:hover:text-violet-400"
+                                className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-2 text-xs font-semibold text-indigo-700 transition-all hover:bg-indigo-100 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
                               >
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                <svg className="h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                                 </svg>
-                                {isShowingTranscript ? "Hide" : "View"} Video Transcript
+                                Watch Video Intro
                               </button>
-                            </div>
+                            </FeatureGate>
+                          )}
+
+                          <FeatureGate
+                            feature="videoIntro"
+                            variant="inline"
+                            fallbackTitle="AI Video Transcript"
+                            fallbackDescription="Review automated Gemini AI speech-to-text transcripts of candidate intro responses."
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowTranscript(isShowingTranscript ? null : app.id);
+                              }}
+                              className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-color)] px-4 py-2 text-xs font-semibold text-[var(--text-muted)] transition-all hover:border-violet-400 hover:text-violet-600 dark:hover:text-violet-400"
+                            >
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                              {isShowingTranscript ? "Hide" : "View"} Video Transcript
+                            </button>
                           </FeatureGate>
 
                           <button
