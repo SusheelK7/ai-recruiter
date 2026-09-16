@@ -6,7 +6,11 @@ import { PrismaClient } from "@prisma/client";
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString =
+    process.env.DATABASE_URL ||
+    process.env.DATABASE1_DATABASE_URL ||
+    process.env.DATABASE1_POSTGRES_URL ||
+    process.env.POSTGRES_URL;
   const isProduction = process.env.NODE_ENV === "production";
   const isRemoteDb =
     Boolean(connectionString) &&
