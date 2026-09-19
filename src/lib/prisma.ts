@@ -56,7 +56,7 @@ function createPrismaClient() {
   const pool = new Pool({
     connectionString,
     max: 10,
-    ssl: isProduction || isRemoteDb ? { rejectUnauthorized: false } : undefined,
+    ssl: isProduction || isRemoteDb ? { rejectUnauthorized: true } : undefined,
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
