@@ -5,6 +5,9 @@ async function cleanDatabase() {
 
   // Get counts before deletion
   const countsBefore = {
+    notifications: await prisma.notification.count(),
+    aiUsageLogs: await prisma.aiUsageLog.count(),
+    platformAuditLogs: await prisma.platformAuditLog.count(),
     activityLogs: await prisma.activityLog.count(),
     candidateTests: await prisma.candidateTest.count(),
     testResults: await prisma.testResult.count(),
@@ -20,6 +23,9 @@ async function cleanDatabase() {
   console.log("Records before cleanup:", countsBefore);
 
   // Execute clean in order of child-to-parent dependencies
+  await prisma.notification.deleteMany({});
+  await prisma.aiUsageLog.deleteMany({});
+  await prisma.platformAuditLog.deleteMany({});
   await prisma.activityLog.deleteMany({});
   await prisma.candidateTest.deleteMany({});
   await prisma.testResult.deleteMany({});
@@ -32,6 +38,9 @@ async function cleanDatabase() {
   await prisma.company.deleteMany({});
 
   const countsAfter = {
+    notifications: await prisma.notification.count(),
+    aiUsageLogs: await prisma.aiUsageLog.count(),
+    platformAuditLogs: await prisma.platformAuditLog.count(),
     activityLogs: await prisma.activityLog.count(),
     candidateTests: await prisma.candidateTest.count(),
     testResults: await prisma.testResult.count(),
